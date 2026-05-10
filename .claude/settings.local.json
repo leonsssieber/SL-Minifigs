@@ -11,7 +11,9 @@
       "PowerShell(vercel *)",
       "PowerShell(Rename-Item *)",
       "Read(//c/Users/Leon Sieber/Downloads/**)",
-      "Bash(mv \"Leon Projekt\" \"sl-minifigs-shop\")"
+      "Bash(mv \"Leon Projekt\" \"sl-minifigs-shop\")",
+      "PowerShell(npm install *)",
+      "PowerShell(Get-Content *)"
     ]
   }
 }
