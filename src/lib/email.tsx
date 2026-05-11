@@ -244,6 +244,201 @@ export function shippingNotificationEmail(data: OrderEmailData) {
   );
 }
 
+// ============================================================
+// Ankauf-Templates
+// ============================================================
+
+import type { AnkaufStatus } from "@/lib/validation";
+
+const ankaufStatusLabel: Record<string, string> = {
+  ACCEPTED: "Angenommen",
+  COUNTER_OFFER: "Gegenangebot",
+  REJECTED: "Abgelehnt",
+};
+
+export function ankaufConfirmationEmail(data: {
+  name: string;
+  statusUrl: string;
+  desiredPrice: number;
+}) {
+  return (
+    <Html>
+      <Head />
+      <Body style={main}>
+        <Container style={container}>
+          <Heading style={heading}>Ankauf-Anfrage erhalten</Heading>
+          <Text style={para}>Hallo {data.name},</Text>
+          <Text style={para}>
+            wir haben deine Ankauf-Anfrage für einen gewünschten Preis von{" "}
+            <strong>CHF {data.desiredPrice.toFixed(2)}</strong> erhalten.
+            Wir prüfen deine Artikel und melden uns innerhalb von 1–3 Werktagen.
+          </Text>
+          <EmailButton href={data.statusUrl} style={btn}>
+            Anfrage-Status ansehen
+          </EmailButton>
+          <Text style={footerStyle}>
+            Über den Button kannst du jederzeit den aktuellen Status deiner Anfrage einsehen.
+          </Text>
+        </Container>
+      </Body>
+    </Html>
+  );
+}
+
+export function ankaufAdminNotificationEmail(data: {
+  name: string;
+  email: string;
+  description: string;
+  desiredPrice: number;
+  adminUrl: string;
+}) {
+  return (
+    <Html>
+      <Head />
+      <Body style={main}>
+        <Container style={container}>
+          <Heading style={heading}>Neue Ankauf-Anfrage</Heading>
+          <Text style={para}>
+            <strong>Von:</strong> {data.name} ({data.email})
+          </Text>
+          <Text style={para}>
+            <strong>Wunschpreis:</strong> CHF {data.desiredPrice.toFixed(2)}
+          </Text>
+          <Hr style={{ borderColor: "#e2e8f0", margin: "16px 0" }} />
+          <Text style={{ ...para, whiteSpace: "pre-line" }}>{data.description}</Text>
+          <EmailButton href={data.adminUrl} style={btn}>Im Admin ansehen</EmailButton>
+        </Container>
+      </Body>
+    </Html>
+  );
+}
+
+export function ankaufResponseEmail(data: {
+  name: string;
+  statusUrl: string;
+  status: AnkaufStatus;
+  adminNote?: string;
+  offeredPrice?: number;
+  desiredPrice: number;
+}) {
+  const label = ankaufStatusLabel[data.status] ?? data.status;
+  return (
+    <Html>
+      <Head />
+      <Body style={main}>
+        <Container style={container}>
+          <Heading style={heading}>Antwort auf deine Ankauf-Anfrage</Heading>
+          <Text style={para}>Hallo {data.name},</Text>
+
+          {data.status === "ACCEPTED" && (
+            <>
+              <Text style={para}>
+                Gute Neuigkeit! Wir nehmen deine Artikel zum gewünschten Preis von{" "}
+                <strong>CHF {data.desiredPrice.toFixed(2)}</strong> an.
+              </Text>
+              <Text style={para}>
+                Bitte sende uns deine Artikel zu. Wähle dafür auf der Statusseite deine bevorzugte
+                Versandmethode. Wir empfehlen den Einschreibebrief — dieser schützt dich bei
+                Verlust der Sendung.
+              </Text>
+            </>
+          )}
+
+          {data.status === "COUNTER_OFFER" && data.offeredPrice !== undefined && (
+            <>
+              <Text style={para}>
+                Wir haben deine Artikel geprüft und möchten dir ein Gegenangebot von{" "}
+                <strong>CHF {data.offeredPrice.toFixed(2)}</strong> machen (dein Wunschpreis
+                war CHF {data.desiredPrice.toFixed(2)}).
+              </Text>
+              <Text style={para}>
+                Du kannst das Angebot auf der Statusseite annehmen oder ablehnen.
+              </Text>
+            </>
+          )}
+
+          {data.status === "REJECTED" && (
+            <Text style={para}>
+              Leider können wir deine Artikel zum jetzigen Zeitpunkt nicht ankaufen.
+            </Text>
+          )}
+
+          {data.adminNote && (
+            <Section style={{ borderTop: "1px solid #e2e8f0", padding: "16px 0", margin: "16px 0" }}>
+              <Text style={{ ...para, fontWeight: 600 }}>Hinweis von uns:</Text>
+              <Text style={{ ...para, whiteSpace: "pre-line" }}>{data.adminNote}</Text>
+            </Section>
+          )}
+
+          <EmailButton href={data.statusUrl} style={btn}>
+            Anfrage-Status / Angebot ansehen
+          </EmailButton>
+          <Text style={footerStyle}>
+            Bei Fragen einfach auf diese E-Mail antworten.
+          </Text>
+        </Container>
+      </Body>
+    </Html>
+  );
+}
+
+export function ankaufCompletedEmail(data: {
+  name: string;
+  payoutAmount: number;
+  payoutNote?: string;
+}) {
+  return (
+    <Html>
+      <Head />
+      <Body style={main}>
+        <Container style={container}>
+          <Heading style={heading}>Zahlung veranlasst</Heading>
+          <Text style={para}>Hallo {data.name},</Text>
+          <Text style={para}>
+            Vielen Dank! Wir haben deine Artikel erhalten und geprüft. Die Zahlung von{" "}
+            <strong>CHF {data.payoutAmount.toFixed(2)}</strong> wird in Kürze veranlasst.
+          </Text>
+          {data.payoutNote && (
+            <Text style={{ ...para, whiteSpace: "pre-line" }}>{data.payoutNote}</Text>
+          )}
+          <Text style={footerStyle}>
+            Falls die Zahlung nicht innerhalb von 3–5 Werktagen eintrifft, melde dich bitte bei uns.
+          </Text>
+        </Container>
+      </Body>
+    </Html>
+  );
+}
+
+export function ankaufReturnedEmail(data: {
+  name: string;
+  adminNote?: string;
+}) {
+  return (
+    <Html>
+      <Head />
+      <Body style={main}>
+        <Container style={container}>
+          <Heading style={heading}>Deine Artikel werden zurückgesandt</Heading>
+          <Text style={para}>Hallo {data.name},</Text>
+          <Text style={para}>
+            Leider konnten wir deine Artikel nach der Prüfung nicht annehmen. Wir schicken sie dir
+            zurück. Die Versandkosten werden dir direkt mitgeteilt oder automatisch verrechnet.
+          </Text>
+          {data.adminNote && (
+            <Section style={{ borderTop: "1px solid #e2e8f0", padding: "16px 0", margin: "16px 0" }}>
+              <Text style={{ ...para, whiteSpace: "pre-line" }}>{data.adminNote}</Text>
+            </Section>
+          )}
+          <Text style={footerStyle}>
+            Bei Fragen stehen wir dir gerne zur Verfügung.
+          </Text>
+        </Container>
+      </Body>
+    </Html>
+  );
+}
+
 export function contactNotificationEmail(data: { name: string; email: string; subject: string; message: string }) {
   return (
     <Html>

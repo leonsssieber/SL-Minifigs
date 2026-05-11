@@ -13,6 +13,7 @@ import {
   Download,
   LogOut,
   ExternalLink,
+  ArrowLeftRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { logoutAction } from "@/server/actions/auth";
@@ -24,6 +25,7 @@ const items = [
   { href: "/admin/bestellungen", label: "Bestellungen", icon: ShoppingBag },
   { href: "/admin/versand", label: "Versand", icon: Truck },
   { href: "/admin/kunden", label: "Kunden", icon: Users },
+  { href: "/admin/ankauf", label: "Ankauf", icon: ArrowLeftRight },
   { href: "/admin/export", label: "Export", icon: Download },
   { href: "/admin/einstellungen", label: "Einstellungen", icon: Settings },
 ];

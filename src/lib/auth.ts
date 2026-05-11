@@ -22,6 +22,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const { email, password } = parsed.data;
         const user = await db.user.findUnique({
           where: { email: email.toLowerCase() },
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            image: true,
+            isAdmin: true,
+            emailVerified: true,
+            hashedPassword: true,
+            twoFactorEnabled: true,
+          },
         });
 
         if (!user || !user.hashedPassword) return null;
@@ -36,6 +46,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           image: user.image,
           isAdmin: user.isAdmin,
           emailVerified: user.emailVerified,
+          twoFactorEnabled: user.twoFactorEnabled,
         };
       },
     }),
@@ -47,19 +58,27 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.id = user.id as string;
         token.isAdmin = (user as { isAdmin?: boolean }).isAdmin ?? false;
         token.emailVerified = (user as { emailVerified?: Date | null }).emailVerified ?? null;
+        token.twoFactorEnabled = (user as { twoFactorEnabled?: boolean }).twoFactorEnabled ?? false;
       }
       // Frische Daten alle ~5 min oder bei session.update()
       if (trigger === "update" || (token.iat && Date.now() / 1000 - (token.iat as number) > 300)) {
         if (token.id) {
           const fresh = await db.user.findUnique({
             where: { id: token.id as string },
-            select: { isAdmin: true, emailVerified: true, email: true, name: true },
+            select: {
+              isAdmin: true,
+              emailVerified: true,
+              email: true,
+              name: true,
+              twoFactorEnabled: true,
+            },
           });
           if (fresh) {
             token.isAdmin = fresh.isAdmin;
             token.emailVerified = fresh.emailVerified;
             token.email = fresh.email;
             token.name = fresh.name;
+            token.twoFactorEnabled = fresh.twoFactorEnabled;
           }
         }
       }

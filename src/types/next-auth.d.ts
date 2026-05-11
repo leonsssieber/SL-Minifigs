@@ -10,11 +10,13 @@ declare module "next-auth" {
       image?: string | null;
       isAdmin: boolean;
       emailVerified: Date | null;
+      twoFactorEnabled: boolean;
     };
   }
   interface User {
     isAdmin?: boolean;
     emailVerified?: Date | null;
+    twoFactorEnabled?: boolean;
   }
 }
 
@@ -23,5 +25,6 @@ declare module "next-auth/jwt" {
     id?: string;
     isAdmin?: boolean;
     emailVerified?: Date | null;
+    twoFactorEnabled?: boolean;
   }
 }

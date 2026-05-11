@@ -1,9 +1,13 @@
+import Link from "next/link";
 import { db } from "@/lib/db";
+import { auth } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { ShieldCheck, ShieldOff } from "lucide-react";
 import { saveSettings } from "@/server/actions/settings";
 
 export const dynamic = "force-dynamic";
@@ -21,7 +25,13 @@ const KEYS = [
 ];
 
 export default async function AdminSettingsPage() {
-  const settings = await db.siteSetting.findMany({ where: { key: { in: KEYS } } });
+  const session = await auth();
+  const [settings, dbUser] = await Promise.all([
+    db.siteSetting.findMany({ where: { key: { in: KEYS } } }),
+    session?.user?.id
+      ? db.user.findUnique({ where: { id: session.user.id }, select: { twoFactorEnabled: true } })
+      : null,
+  ]);
   const map = new Map(settings.map((s) => [s.key, s.value]));
 
   return (
@@ -76,6 +86,30 @@ export default async function AdminSettingsPage() {
         </Card>
         <Button type="submit">Speichern</Button>
       </form>
+
+      {/* 2FA-Einstellungen */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            Zwei-Faktor-Authentifizierung
+            {dbUser?.twoFactorEnabled ? (
+              <Badge variant="success" className="gap-1"><ShieldCheck className="h-3 w-3" />Aktiviert</Badge>
+            ) : (
+              <Badge variant="secondary" className="gap-1"><ShieldOff className="h-3 w-3" />Deaktiviert</Badge>
+            )}
+          </CardTitle>
+          <CardDescription>
+            {dbUser?.twoFactorEnabled
+              ? "Dein Admin-Konto ist mit 2FA geschützt."
+              : "Aktiviere 2FA für zusätzlichen Schutz deines Admin-Kontos."}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Link href="/admin/einstellungen/2fa">
+            <Button variant="outline">2FA verwalten</Button>
+          </Link>
+        </CardContent>
+      </Card>
     </div>
   );
 }

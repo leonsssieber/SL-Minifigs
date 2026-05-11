@@ -16,25 +16,40 @@ datasource db {
 // ============================================================
 
 model User {
-  id             String    @id @default(cuid())
-  email          String    @unique
-  emailVerified  DateTime?
-  name           String?
-  hashedPassword String?
-  isAdmin        Boolean   @default(false)
-  image          String?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id                String    @id @default(cuid())
+  email             String    @unique
+  emailVerified     DateTime?
+  name              String?
+  hashedPassword    String?
+  isAdmin           Boolean   @default(false)
+  image             String?
+  twoFactorSecret   String?   // AES-256-GCM encrypted TOTP secret
+  twoFactorEnabled  Boolean   @default(false)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
-  accounts      Account[]
-  sessions      Session[]
-  addresses     Address[]
-  orders        Order[]
-  wishlist      WishlistItem[]
-  carts         Cart[]
-  auditLogs     AuditLog[]
+  accounts              Account[]
+  sessions              Session[]
+  addresses             Address[]
+  orders                Order[]
+  wishlist              WishlistItem[]
+  carts                 Cart[]
+  auditLogs             AuditLog[]
+  twoFactorRecoveryCodes TwoFactorRecoveryCode[]
 
   @@index([email])
+}
+
+model TwoFactorRecoveryCode {
+  id        String    @id @default(cuid())
+  userId    String
+  code      String    // bcrypt-hashed
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Account {
@@ -371,6 +386,55 @@ model WishlistItem {
 
   @@unique([userId, productId])
   @@index([userId])
+}
+
+// ============================================================
+// ANKAUF (Rückkauf von Kunden)
+// ============================================================
+
+model AnkaufRequest {
+  id           String        @id @default(cuid())
+  publicToken  String        @unique @default(cuid())
+  name         String
+  email        String
+  phone        String?
+  description  String
+  desiredPrice Decimal       @db.Decimal(10, 2)
+  status       String        @default("PENDING")
+  // Admin-Antwort
+  adminNote    String?
+  offeredPrice Decimal?      @db.Decimal(10, 2)
+  // Nach Annahme: Versandinfos des Einsenders
+  shippingMethod String?
+  trackingCode   String?
+  // Abschluss
+  payoutAmount Decimal?      @db.Decimal(10, 2)
+  payoutNote   String?
+  // Zeitstempel
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  respondedAt  DateTime?
+  shippedAt    DateTime?
+  completedAt  DateTime?
+
+  images AnkaufImage[]
+
+  @@index([status])
+  @@index([email])
+  @@index([createdAt])
+}
+
+model AnkaufImage {
+  id        String        @id @default(cuid())
+  requestId String
+  url       String
+  key       String
+  name      String?
+  createdAt DateTime      @default(now())
+
+  request AnkaufRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@index([requestId])
 }
 
 // ============================================================

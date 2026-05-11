@@ -13,7 +13,22 @@
       "Read(//c/Users/Leon Sieber/Downloads/**)",
       "Bash(mv \"Leon Projekt\" \"sl-minifigs-shop\")",
       "PowerShell(npm install *)",
-      "PowerShell(Get-Content *)"
+      "PowerShell(Get-Content *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Leon Sieber\\\\desktop\\\\sl-minifigs\" -Recurse -Directory)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(Sort-Object)",
+      "Bash(npm list *)",
+      "Bash(npx prisma *)",
+      "Bash(npx tsc *)",
+      "Bash(node -e \"const o = require\\('otplib'\\); console.log\\(Object.keys\\(o\\)\\)\")",
+      "Bash(node -e \"const { TOTP, generateSecret } = require\\('otplib'\\); console.log\\(typeof TOTP, typeof generateSecret\\); const t = new TOTP\\(\\); console.log\\(typeof t.verify\\)\")",
+      "Bash(node -e \"const { TOTP, generateSecret } = require\\('otplib'\\); const secret = generateSecret\\(20\\); console.log\\(secret\\); const totp = new TOTP\\(\\); const token = totp.generate\\(secret\\); console.log\\(token\\); console.log\\(totp.verify\\({ token, secret }\\)\\)\")",
+      "Bash(node -e ' *)",
+      "Bash(node -e \"const o = require\\('otplib/dist/functional.cjs'\\); console.log\\(Object.keys\\(o\\).slice\\(0,20\\)\\)\")",
+      "Bash(node -e \"const o = require\\('otplib/functional'\\); console.log\\(Object.keys\\(o\\).slice\\(0,20\\)\\)\")",
+      "Bash(npm uninstall *)",
+      "Bash(npx next *)",
+      "Bash(node -e *)"
     ]
   }
 }

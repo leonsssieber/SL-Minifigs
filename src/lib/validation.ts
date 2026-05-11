@@ -177,6 +177,52 @@ export const contactSchema = z.object({
 });
 
 // ============================================================
+// ANKAUF
+// ============================================================
+
+export const ankaufSubmitSchema = z.object({
+  name: z.string().min(2, "Mindestens 2 Zeichen").max(100),
+  email: z.string().email("Ungültige Email-Adresse").max(255),
+  phone: z.string().max(30).optional().nullable(),
+  description: z.string().min(20, "Mindestens 20 Zeichen (beschreibe deine Artikel genauer)").max(5000),
+  desiredPrice: z.coerce.number().min(0.5, "Mindestpreis: CHF 0.50").max(100000),
+  images: z
+    .array(z.object({ url: z.string().url(), key: z.string() }))
+    .min(1, "Mindestens 1 Bild erforderlich")
+    .max(8, "Maximal 8 Bilder"),
+  website: z.string().max(0).optional().or(z.literal("")), // honeypot
+});
+export type AnkaufSubmitInput = z.infer<typeof ankaufSubmitSchema>;
+
+export const ankaufStatusValues = [
+  "PENDING",
+  "ACCEPTED",
+  "COUNTER_OFFER",
+  "REJECTED",
+  "WAITING_SHIPMENT",
+  "SHIPPED",
+  "VERIFYING",
+  "COMPLETED",
+  "RETURNED",
+] as const;
+export type AnkaufStatus = (typeof ankaufStatusValues)[number];
+
+export const ankaufAdminResponseSchema = z.object({
+  status: z.enum(ankaufStatusValues),
+  adminNote: z.string().max(2000).optional().nullable(),
+  offeredPrice: z.coerce.number().min(0).max(100000).optional().nullable(),
+  payoutAmount: z.coerce.number().min(0).max(100000).optional().nullable(),
+  payoutNote: z.string().max(500).optional().nullable(),
+});
+
+export const ankaufShipSchema = z.object({
+  shippingMethod: z.enum(["brief", "einschreiben", "paket"], {
+    required_error: "Bitte eine Versandmethode wählen.",
+  }),
+  trackingCode: z.string().max(100).optional().nullable(),
+});
+
+// ============================================================
 // ORDER MANAGEMENT (Admin)
 // ============================================================
 

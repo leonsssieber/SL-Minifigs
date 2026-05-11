@@ -14,6 +14,7 @@ export const authConfig: NextAuthConfig = {
         token.id = user.id as string;
         token.isAdmin = (user as { isAdmin?: boolean }).isAdmin ?? false;
         token.emailVerified = (user as { emailVerified?: Date | null }).emailVerified ?? null;
+        token.twoFactorEnabled = (user as { twoFactorEnabled?: boolean }).twoFactorEnabled ?? false;
       }
       return token;
     },
@@ -22,6 +23,7 @@ export const authConfig: NextAuthConfig = {
         session.user.id = token.id as string;
         session.user.isAdmin = (token.isAdmin as boolean) ?? false;
         session.user.emailVerified = token.emailVerified as Date | null;
+        session.user.twoFactorEnabled = (token.twoFactorEnabled as boolean) ?? false;
       }
       return session;
     },

@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth";
 const f = createUploadthing();
 
 export const ourFileRouter = {
+  // Produktbilder — nur für Admins
   productImage: f({
     image: { maxFileSize: "4MB", maxFileCount: 10, contentDisposition: "inline" },
   })
@@ -17,6 +18,18 @@ export const ourFileRouter = {
     })
     .onUploadComplete(async ({ metadata, file }) => {
       return { uploadedBy: metadata.userId, url: file.url, key: file.key };
+    }),
+
+  // Ankauf-Bilder — für alle (auch nicht eingeloggt), max 8 Bilder à 8 MB
+  ankaufImage: f({
+    image: { maxFileSize: "8MB", maxFileCount: 8, contentDisposition: "inline" },
+  })
+    .middleware(async () => {
+      // Kein Login erforderlich für Ankauf-Anfragen
+      return {};
+    })
+    .onUploadComplete(async ({ file }) => {
+      return { url: file.url, key: file.key };
     }),
 } satisfies FileRouter;
 
