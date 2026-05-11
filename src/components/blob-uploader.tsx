@@ -14,7 +14,7 @@ export interface UploadedBlob {
 
 interface Props {
   endpoint: BlobEndpoint;
-  maxFiles?: number; // verbleibende Slots
+  maxFiles?: number;
   onUploaded: (files: UploadedBlob[]) => void;
   onError?: (msg: string) => void;
   className?: string;
@@ -49,18 +49,48 @@ export function BlobUploader({
 
     try {
       for (const file of files) {
-        const blob = await upload(file.name, file, {
-          access: "public",
-          handleUploadUrl: "/api/blob/upload",
-          clientPayload: JSON.stringify({ endpoint }),
-          contentType: file.type,
-        });
-        uploaded.push({ url: blob.url, pathname: blob.pathname });
+        try {
+          const blob = await upload(file.name, file, {
+            access: "public",
+            handleUploadUrl: "/api/blob/upload",
+            clientPayload: JSON.stringify({ endpoint }),
+            contentType: file.type,
+          });
+          uploaded.push({ url: blob.url, pathname: blob.pathname });
+        } catch (err) {
+          // Versuche, eine sinnvolle Fehlermeldung aus dem Server zu lesen
+          let msg = err instanceof Error ? err.message : "Upload fehlgeschlagen";
+          // Vercel Blob werfen oft generische Fehler — versuche selbst zu fetchen
+          if (msg.includes("Failed to retrieve") || msg.includes("token")) {
+            try {
+              const res = await fetch("/api/blob/upload", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  type: "blob.generate-client-token",
+                  payload: {
+                    pathname: file.name,
+                    callbackUrl: window.location.origin + "/api/blob/upload",
+                    clientPayload: JSON.stringify({ endpoint }),
+                  },
+                }),
+              });
+              if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                if (data.error) msg = data.error;
+              }
+            } catch {
+              // ignore — fall back to original message
+            }
+          }
+          throw new Error(msg);
+        }
         setProgress((p) => (p ? { done: p.done + 1, total: p.total } : p));
       }
       onUploaded(uploaded);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Upload fehlgeschlagen";
+      console.error("[BlobUploader] Fehler:", err);
       onError?.(msg);
     } finally {
       setIsUploading(false);

@@ -9,15 +9,39 @@ import { auth } from "@/lib/auth";
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
 export async function POST(request: Request): Promise<NextResponse> {
-  const body = (await request.json()) as HandleUploadBody;
+  // Sanity-Check: Vercel Blob Token muss gesetzt sein
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    console.error("[blob] BLOB_READ_WRITE_TOKEN fehlt in .env");
+    return NextResponse.json(
+      {
+        error:
+          "Server-Konfiguration unvollständig: BLOB_READ_WRITE_TOKEN fehlt. " +
+          "Erstelle einen Blob-Store auf vercel.com/dashboard → Storage → Blob, " +
+          "und kopiere den Token in .env",
+      },
+      { status: 500 },
+    );
+  }
+
+  let body: HandleUploadBody;
+  try {
+    body = (await request.json()) as HandleUploadBody;
+  } catch {
+    return NextResponse.json({ error: "Ungültiger Request-Body" }, { status: 400 });
+  }
 
   try {
     const jsonResponse = await handleUpload({
       body,
       request,
-      onBeforeGenerateToken: async (pathname, clientPayloadRaw) => {
-        const payload = clientPayloadRaw ? JSON.parse(clientPayloadRaw) : {};
-        const endpoint: string = payload?.endpoint ?? "ankaufImage";
+      onBeforeGenerateToken: async (_pathname, clientPayloadRaw) => {
+        let payload: { endpoint?: string } = {};
+        try {
+          payload = clientPayloadRaw ? JSON.parse(clientPayloadRaw) : {};
+        } catch {
+          // ignore invalid payload
+        }
+        const endpoint = payload.endpoint ?? "ankaufImage";
 
         if (endpoint === "productImage") {
           // Nur Admin darf Produktbilder hochladen
@@ -43,17 +67,20 @@ export async function POST(request: Request): Promise<NextResponse> {
           };
         }
 
-        throw new Error("Unbekannter Endpoint");
+        throw new Error(`Unbekannter Endpoint: ${endpoint}`);
       },
-      onUploadCompleted: async () => {
-        // No-op: Client kümmert sich um DB-Eintrag nach Upload.
-        // (Webhook von Vercel kommt nur in Production an, daher Client-Side Tracking.)
+      onUploadCompleted: async ({ blob }) => {
+        // In Production wird dies via Webhook von Vercel ausgelöst.
+        // Lokal (localhost) kommt der Webhook nicht durch — das ist OK,
+        // der Client kennt die URL bereits nach dem PUT.
+        console.log("[blob] Upload abgeschlossen:", blob.url);
       },
     });
 
     return NextResponse.json(jsonResponse);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Upload-Fehler";
+    console.error("[blob] Upload-Fehler:", err);
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }
