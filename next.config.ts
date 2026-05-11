@@ -7,7 +7,7 @@ const cspHeader = `
   img-src 'self' blob: data: https://*.public.blob.vercel-storage.com;
   font-src 'self' data:;
   frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://*.paypal.com;
-  connect-src 'self' https://api.stripe.com https://*.paypal.com https://*.public.blob.vercel-storage.com https://blob.vercel-storage.com;
+  connect-src 'self' https://api.stripe.com https://*.paypal.com https://vercel.com https://*.public.blob.vercel-storage.com https://blob.vercel-storage.com;
   form-action 'self' https://*.paypal.com;
   base-uri 'self';
   object-src 'none';
