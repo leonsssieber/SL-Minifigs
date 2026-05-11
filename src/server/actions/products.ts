@@ -69,7 +69,7 @@ export async function createProduct(formData: FormData): Promise<ActionResult<{ 
         comparePrice: data.comparePrice,
         stockType: data.stockType,
         stockQuantity: data.stockQuantity,
-        sku: data.sku,
+        sku: data.sku || null,
         legoSetNumber: data.legoSetNumber,
         weightGrams: data.weightGrams,
         shippingCategory: data.shippingCategory,

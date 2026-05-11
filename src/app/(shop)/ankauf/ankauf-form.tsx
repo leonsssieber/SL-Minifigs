@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { UploadDropzone } from "@/lib/uploadthing";
+import { BlobUploader } from "@/components/blob-uploader";
 import { submitAnkaufRequest } from "@/server/actions/ankauf";
 import { ankaufSubmitSchema, type AnkaufSubmitInput } from "@/lib/validation";
 import { Input } from "@/components/ui/input";
@@ -140,22 +140,18 @@ export function AnkaufForm() {
         )}
 
         {images.length < 8 && (
-          <UploadDropzone
+          <BlobUploader
             endpoint="ankaufImage"
-            onClientUploadComplete={(files) => {
+            maxFiles={8 - images.length}
+            onUploaded={(files) => {
               setUploadError(null);
               setImages((prev) => [
                 ...prev,
-                ...files.map((f) => ({ url: f.url, key: f.key })),
+                ...files.map((f) => ({ url: f.url, key: f.pathname })),
               ]);
             }}
-            onUploadError={(err) => setUploadError(err.message)}
-            config={{ mode: "auto" }}
-            appearance={{
-              container: "border-2 border-dashed rounded-md p-6",
-              label: "text-sm text-muted-foreground",
-              button: "bg-primary text-primary-foreground text-sm px-4 py-2 rounded-md",
-            }}
+            onError={(msg) => setUploadError(msg)}
+            helperText="JPG, PNG, WEBP, GIF — max. 8 MB pro Bild"
           />
         )}
         {uploadError && <p className="text-sm text-destructive">{uploadError}</p>}

@@ -130,7 +130,7 @@ model Product {
   comparePrice     Decimal?
   stockType        String        @default("UNIQUE")
   stockQuantity    Int              @default(1)
-  sku              String?          @unique
+  sku              String?
   legoSetNumber    String?
   weightGrams      Int?
   shippingCategory String?          // z.B. "minifigure", "small_set", "large_set"

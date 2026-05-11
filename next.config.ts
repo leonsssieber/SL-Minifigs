@@ -4,10 +4,10 @@ const cspHeader = `
   default-src 'self';
   script-src 'self' 'unsafe-eval' 'unsafe-inline' https://js.stripe.com https://*.paypal.com https://www.paypalobjects.com;
   style-src 'self' 'unsafe-inline';
-  img-src 'self' blob: data: https://utfs.io https://*.ufs.sh https://*.uploadthing.com;
+  img-src 'self' blob: data: https://*.public.blob.vercel-storage.com;
   font-src 'self' data:;
   frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://*.paypal.com;
-  connect-src 'self' https://api.stripe.com https://*.paypal.com https://api.uploadthing.com https://*.ufs.sh https://*.ingest.uploadthing.com;
+  connect-src 'self' https://api.stripe.com https://*.paypal.com https://*.public.blob.vercel-storage.com https://blob.vercel-storage.com;
   form-action 'self' https://*.paypal.com;
   base-uri 'self';
   object-src 'none';
@@ -28,9 +28,7 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   images: {
     remotePatterns: [
-      { protocol: "https", hostname: "utfs.io" },
-      { protocol: "https", hostname: "*.ufs.sh" },
-      { protocol: "https", hostname: "*.uploadthing.com" },
+      { protocol: "https", hostname: "*.public.blob.vercel-storage.com" },
     ],
   },
   async headers() {

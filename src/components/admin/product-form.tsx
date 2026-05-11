@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { UploadDropzone } from "@/lib/uploadthing";
+import { BlobUploader } from "@/components/blob-uploader";
 import { createProduct, updateProduct } from "@/server/actions/products";
 import { slugify, decimalToNumber } from "@/lib/utils";
 
@@ -188,21 +188,17 @@ export function ProductForm({ product, categories, shippingMethods }: Props) {
                 </div>
               )}
               {images.length < 10 && (
-                <UploadDropzone
+                <BlobUploader
                   endpoint="productImage"
-                  config={{ mode: "auto" }}
-                  appearance={{
-                    container: "border-dashed border-2 rounded-md p-6 ut-uploading:opacity-50",
-                    button: "bg-primary text-primary-foreground rounded-md text-sm",
-                  }}
-                  onClientUploadComplete={(res) => {
+                  maxFiles={10 - images.length}
+                  onUploaded={(files) => {
                     setImages((arr) => [
                       ...arr,
-                      ...res.map((r) => ({ url: r.url, key: r.key, alt: name })),
+                      ...files.map((f) => ({ url: f.url, key: f.pathname, alt: name })),
                     ].slice(0, 10));
-                    toast.success(`${res.length} Bild(er) hochgeladen`);
+                    toast.success(`${files.length} Bild(er) hochgeladen`);
                   }}
-                  onUploadError={(err) => { toast.error(`Upload fehlgeschlagen: ${err.message}`); }}
+                  onError={(msg) => toast.error(`Upload fehlgeschlagen: ${msg}`)}
                 />
               )}
               <p className="text-xs text-muted-foreground">Max. 10 Bilder, je 4 MB. Erstes Bild = Hauptbild.</p>
