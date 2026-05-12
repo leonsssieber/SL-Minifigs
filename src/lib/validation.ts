@@ -63,6 +63,14 @@ export const productSchema = z.object({
   weightGrams: z.coerce.number().int().min(0).max(50000).optional().nullable(),
   shippingCategory: z.string().max(50).optional().nullable(),
   customShippingMethodId: z.string().optional().nullable(),
+  shippingOptions: z
+    .array(
+      z.object({
+        methodId: z.string().min(1),
+        isRecommended: z.boolean().default(false),
+      })
+    )
+    .default([]),
   active: z.boolean().default(true),
   featured: z.boolean().default(false),
   images: z

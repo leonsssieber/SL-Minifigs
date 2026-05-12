@@ -22,6 +22,7 @@ interface ShippingOption {
   description: string | null | undefined;
   price: number;
   isCheapest: boolean;
+  isRecommended: boolean;
 }
 
 interface Props {
@@ -55,7 +56,9 @@ export function CheckoutFlow({ defaultEmail, defaultName, stripeAvailable, paypa
       .then((res) => {
         setShippingOptions(res.options);
         if (res.options.length > 0) {
-          setShippingMethodId(res.options[0].methodId);
+          // Empfohlene Methode bevorzugen, sonst die günstigste.
+          const recommended = res.options.find((o) => o.isRecommended);
+          setShippingMethodId((recommended ?? res.options[0]).methodId);
         }
       })
       .finally(() => setLoadingShipping(false));
@@ -211,14 +214,17 @@ export function CheckoutFlow({ defaultEmail, defaultName, stripeAvailable, paypa
                     onChange={() => setShippingMethodId(o.methodId)}
                     className="h-4 w-4"
                   />
-                  <div className="flex-1">
-                    <div className="font-medium text-sm flex items-center gap-2">
-                      {o.methodName}
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                      <span>{o.methodName}</span>
+                      {o.isRecommended && (
+                        <span className="text-[10px] bg-amber-100 text-amber-900 px-1.5 py-0.5 rounded font-semibold">empfohlen</span>
+                      )}
                       {o.isCheapest && <span className="text-[10px] bg-green-100 text-green-800 px-1.5 py-0.5 rounded">günstigste</span>}
                     </div>
                     {o.description && <div className="text-xs text-muted-foreground">{o.description}</div>}
                   </div>
-                  <div className="font-semibold text-sm">{formatCHF(o.price)}</div>
+                  <div className="font-semibold text-sm whitespace-nowrap">{formatCHF(o.price)}</div>
                 </label>
               ))
             )}

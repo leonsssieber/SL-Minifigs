@@ -81,3 +81,23 @@ export function decimalToNumber(value: { toString(): string } | number | null | 
   if (value == null) return 0;
   return typeof value === "number" ? value : Number(value.toString());
 }
+
+// Liefert eine BrickLink-Katalog-URL für eine LEGO-Teilenummer.
+// Falls bekannt, wird der Typ ("minifig" | "part" | "set" | "gear") als Hinweis genutzt,
+// sonst raten wir per Heuristik: Minifig-IDs beginnen typischerweise mit Buchstaben
+// (sw0001, njo123, dis041), Sets sind reine Ziffern (75300), Teile haben oft Ziffern + Suffix.
+export function bricklinkUrl(itemId: string, type?: string | null): string {
+  const id = itemId.trim();
+  const flag = (() => {
+    const t = (type ?? "").toLowerCase();
+    if (t === "minifig" || t === "minifigure") return "M";
+    if (t === "set") return "S";
+    if (t === "gear") return "G";
+    if (t === "part") return "P";
+    // Heuristik
+    if (/^[a-z]/i.test(id)) return "M";
+    if (/^\d+(-\d+)?$/.test(id)) return "S";
+    return "P";
+  })();
+  return `https://www.bricklink.com/v2/catalog/catalogitem.page?${flag}=${encodeURIComponent(id)}`;
+}

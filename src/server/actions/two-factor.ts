@@ -1,161 +1,69 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
-import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin";
-import {
-  generateTotpSecret,
-  encryptTotpSecret,
-  verifyTotpCode,
-  generateRecoveryCodes,
-  hashRecoveryCode,
-  verifyRecoveryCode,
-} from "@/lib/totp";
+import { createEmailCode, verifyEmailCode, EMAIL_2FA_CODE_TTL_MINUTES } from "@/lib/email-2fa";
+import { sendEmail, adminTwoFactorCodeEmail } from "@/lib/email";
 import { sign2faCookie, TWO_FA_COOKIE_NAME } from "@/lib/two-factor-cookie";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import type { ActionResult } from "./auth";
 
-// Liefert den entschlüsselten TOTP-Secret (z.B. für QR-Code-Anzeige)
-// Muss separat von der Setup-Seite aufgerufen werden, damit kein Secret
-// verloren geht wenn die Seite mehrfach geladen wird.
-export async function initiate2faSetup(): Promise<ActionResult<{ secret: string; uri: string }>> {
+// Sendet einen 2FA-Code an die Admin-E-Mail-Adresse.
+export async function sendAdmin2faCode(): Promise<ActionResult<{ sent: true; ttlMinutes: number }>> {
   const user = await requireAdmin();
+
+  const ip = getClientIp(await headers());
+  const rl = await rateLimit(`2fa-send:${user.id}:${ip}`, 5, 60);
+  if (!rl.success) {
+    return { ok: false, error: `Bitte ${rl.resetIn}s warten, bevor du einen neuen Code anforderst.` };
+  }
 
   const dbUser = await db.user.findUnique({
     where: { id: user.id },
-    select: { email: true, twoFactorSecret: true, twoFactorEnabled: true },
+    select: { email: true, name: true },
   });
   if (!dbUser) return { ok: false, error: "Benutzer nicht gefunden." };
-  if (dbUser.twoFactorEnabled) return { ok: false, error: "2FA ist bereits aktiviert." };
 
-  // Wenn noch kein pending Secret vorhanden, neuen generieren
-  let plainSecret: string;
-  if (dbUser.twoFactorSecret) {
-    // Secret aus DB laden (bestehendes Setup, das noch nicht bestätigt wurde)
-    const { decryptTotpSecret } = await import("@/lib/totp");
-    plainSecret = decryptTotpSecret(dbUser.twoFactorSecret);
-  } else {
-    plainSecret = generateTotpSecret();
-    await db.user.update({
-      where: { id: user.id },
-      data: { twoFactorSecret: encryptTotpSecret(plainSecret) },
-    });
-  }
-
-  const { getTotpUri } = await import("@/lib/totp");
-  const uri = getTotpUri(plainSecret, dbUser.email);
-  return { ok: true, data: { secret: plainSecret, uri } };
-}
-
-export async function confirm2faSetup(formData: FormData): Promise<ActionResult<{ recoveryCodes: string[] }>> {
-  const user = await requireAdmin();
-  const code = String(formData.get("code") ?? "").trim();
-
-  if (!/^\d{6}$/.test(code)) return { ok: false, error: "Bitte einen 6-stelligen Code eingeben." };
-
-  const dbUser = await db.user.findUnique({
-    where: { id: user.id },
-    select: { twoFactorSecret: true, twoFactorEnabled: true },
-  });
-  if (!dbUser?.twoFactorSecret) return { ok: false, error: "Kein 2FA-Setup gefunden. Bitte neu starten." };
-  if (dbUser.twoFactorEnabled) return { ok: false, error: "2FA ist bereits aktiviert." };
-
-  if (!verifyTotpCode(code, dbUser.twoFactorSecret)) {
-    return { ok: false, error: "Ungültiger Code. Bitte erneut versuchen." };
-  }
-
-  // Recovery Codes generieren und hashen
-  const plainCodes = generateRecoveryCodes();
-  const hashedCodes = await Promise.all(plainCodes.map(hashRecoveryCode));
-
-  await db.$transaction([
-    db.user.update({ where: { id: user.id }, data: { twoFactorEnabled: true } }),
-    db.twoFactorRecoveryCode.deleteMany({ where: { userId: user.id } }),
-    db.twoFactorRecoveryCode.createMany({
-      data: hashedCodes.map((code) => ({ userId: user.id, code })),
+  const code = await createEmailCode(user.id);
+  const result = await sendEmail({
+    to: dbUser.email,
+    subject: `Admin-Login-Code: ${code}`,
+    react: adminTwoFactorCodeEmail({
+      name: dbUser.name ?? "",
+      code,
+      ttlMinutes: EMAIL_2FA_CODE_TTL_MINUTES,
     }),
-  ]);
+  });
 
-  return { ok: true, data: { recoveryCodes: plainCodes } };
+  if (!result.ok) {
+    // SMTP nicht konfiguriert → in der Dev-Konsole sichtbar, damit Setup weitergeht.
+    console.warn(`[admin 2fa] Code für ${dbUser.email}: ${code}`);
+  }
+
+  return { ok: true, data: { sent: true, ttlMinutes: EMAIL_2FA_CODE_TTL_MINUTES } };
 }
 
-export async function disable2fa(formData: FormData): Promise<ActionResult> {
+export async function verifyAdmin2faCode(formData: FormData): Promise<ActionResult> {
   const user = await requireAdmin();
   const code = String(formData.get("code") ?? "").trim();
 
-  const dbUser = await db.user.findUnique({
-    where: { id: user.id },
-    select: { twoFactorSecret: true, twoFactorEnabled: true },
-  });
-  if (!dbUser?.twoFactorEnabled) return { ok: false, error: "2FA ist nicht aktiviert." };
-
-  // Code-Prüfung (TOTP oder Recovery)
-  const totpOk = dbUser.twoFactorSecret && /^\d{6}$/.test(code)
-    ? verifyTotpCode(code, dbUser.twoFactorSecret)
-    : false;
-
-  if (!totpOk) return { ok: false, error: "Ungültiger Code." };
-
-  await db.$transaction([
-    db.user.update({
-      where: { id: user.id },
-      data: { twoFactorEnabled: false, twoFactorSecret: null },
-    }),
-    db.twoFactorRecoveryCode.deleteMany({ where: { userId: user.id } }),
-  ]);
-
-  // 2FA-Cookie löschen
-  const jar = await cookies();
-  jar.delete(TWO_FA_COOKIE_NAME);
-
-  return { ok: true };
-}
-
-export async function verify2faLogin(formData: FormData): Promise<ActionResult> {
-  const user = await requireAdmin();
-  const code = String(formData.get("code") ?? "").trim();
-
-  const dbUser = await db.user.findUnique({
-    where: { id: user.id },
-    select: {
-      twoFactorSecret: true,
-      twoFactorEnabled: true,
-      twoFactorRecoveryCodes: {
-        where: { usedAt: null },
-        select: { id: true, code: true },
-      },
-    },
-  });
-
-  if (!dbUser?.twoFactorEnabled || !dbUser.twoFactorSecret) {
-    return { ok: false, error: "2FA nicht aktiviert." };
+  const ip = getClientIp(await headers());
+  const rl = await rateLimit(`2fa-verify:${user.id}:${ip}`, 10, 60);
+  if (!rl.success) {
+    return { ok: false, error: `Zu viele Versuche. Bitte in ${rl.resetIn}s erneut.` };
   }
 
-  // TOTP-Code prüfen
-  if (/^\d{6}$/.test(code)) {
-    if (!verifyTotpCode(code, dbUser.twoFactorSecret)) {
-      return { ok: false, error: "Ungültiger Code. Bitte erneut versuchen." };
-    }
-  } else {
-    // Recovery-Code prüfen
-    const normalised = code.replace(/[^A-Fa-f0-9]/g, "").toUpperCase();
-    if (normalised.length !== 10) return { ok: false, error: "Ungültiger Code." };
-
-    let matchId: string | null = null;
-    for (const rc of dbUser.twoFactorRecoveryCodes) {
-      const match = await verifyRecoveryCode(normalised, rc.code);
-      if (match) { matchId = rc.id; break; }
-    }
-    if (!matchId) return { ok: false, error: "Ungültiger Recovery-Code." };
-
-    await db.twoFactorRecoveryCode.update({
-      where: { id: matchId },
-      data: { usedAt: new Date() },
-    });
+  if (!/^\d{6}$/.test(code)) {
+    return { ok: false, error: "Bitte einen 6-stelligen Code eingeben." };
   }
 
-  // Signiertes 2FA-Cookie setzen (30 Tage)
+  const ok = await verifyEmailCode(user.id, code);
+  if (!ok) {
+    return { ok: false, error: "Ungültiger oder abgelaufener Code." };
+  }
+
   const cookieValue = await sign2faCookie(user.id);
   const jar = await cookies();
   jar.set(TWO_FA_COOKIE_NAME, cookieValue, {
@@ -169,31 +77,10 @@ export async function verify2faLogin(formData: FormData): Promise<ActionResult> 
   redirect("/admin");
 }
 
-export async function regenerateRecoveryCodes(formData: FormData): Promise<ActionResult<{ recoveryCodes: string[] }>> {
-  const user = await requireAdmin();
-  const code = String(formData.get("code") ?? "").trim();
-
-  const dbUser = await db.user.findUnique({
-    where: { id: user.id },
-    select: { twoFactorSecret: true, twoFactorEnabled: true },
-  });
-  if (!dbUser?.twoFactorEnabled || !dbUser.twoFactorSecret) {
-    return { ok: false, error: "2FA nicht aktiviert." };
-  }
-
-  if (!/^\d{6}$/.test(code) || !verifyTotpCode(code, dbUser.twoFactorSecret)) {
-    return { ok: false, error: "Ungültiger Code." };
-  }
-
-  const plainCodes = generateRecoveryCodes();
-  const hashedCodes = await Promise.all(plainCodes.map(hashRecoveryCode));
-
-  await db.$transaction([
-    db.twoFactorRecoveryCode.deleteMany({ where: { userId: user.id } }),
-    db.twoFactorRecoveryCode.createMany({
-      data: hashedCodes.map((c) => ({ userId: user.id, code: c })),
-    }),
-  ]);
-
-  return { ok: true, data: { recoveryCodes: plainCodes } };
+// Manuelles Logout aus dem 2FA-Zustand (z.B. um sich auf einem fremden Gerät abzumelden).
+export async function clearAdmin2faCookie(): Promise<ActionResult> {
+  await requireAdmin();
+  const jar = await cookies();
+  jar.delete(TWO_FA_COOKIE_NAME);
+  return { ok: true };
 }

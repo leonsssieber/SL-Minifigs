@@ -25,6 +25,7 @@ export function Footer({ shopName }: { shopName: string }) {
           <div>
             <h4 className="font-semibold mb-3 text-sm">Service</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
+              <li><Link href="/ankauf" className="hover:text-foreground">LEGO ankaufen</Link></li>
               <li><Link href="/kontakt" className="hover:text-foreground">Kontakt</Link></li>
               <li><Link href="/widerruf" className="hover:text-foreground">Widerrufsrecht</Link></li>
               <li><Link href="/agb" className="hover:text-foreground">AGB</Link></li>

@@ -23,7 +23,8 @@ model User {
   hashedPassword    String?
   isAdmin           Boolean   @default(false)
   image             String?
-  twoFactorSecret   String?   // AES-256-GCM encrypted TOTP secret
+  // Legacy TOTP-Felder (nicht mehr verwendet — Email-2FA ist Standard für Admins)
+  twoFactorSecret   String?
   twoFactorEnabled  Boolean   @default(false)
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
@@ -36,6 +37,7 @@ model User {
   carts                 Cart[]
   auditLogs             AuditLog[]
   twoFactorRecoveryCodes TwoFactorRecoveryCode[]
+  emailTwoFactorCodes   EmailTwoFactorCode[]
 
   @@index([email])
 }
@@ -50,6 +52,21 @@ model TwoFactorRecoveryCode {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+// Kurzlebige 6-stellige Codes, die per E-Mail an Admins gesendet werden.
+model EmailTwoFactorCode {
+  id        String    @id @default(cuid())
+  userId    String
+  codeHash  String    // bcrypt-Hash des 6-stelligen Codes
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model Account {
@@ -146,6 +163,7 @@ model Product {
   cartItems              CartItem[]
   orderItems             OrderItem[]
   wishlistItems          WishlistItem[]
+  shippingOptions        ProductShippingOption[]
 
   @@index([slug])
   @@index([categoryId])
@@ -310,11 +328,31 @@ model ShippingMethod {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  rules    ShippingRule[]
-  orders   Order[]
-  products Product[]
+  rules           ShippingRule[]
+  orders          Order[]
+  products        Product[]
+  productOptions  ProductShippingOption[]
 
   @@index([active])
+}
+
+// Konfiguriert pro Produkt eine erlaubte Versandmethode mit optionaler
+// "Empfohlen"-Markierung. Wenn ein Produkt keine Einträge hat, sind alle
+// aktiven Methoden zulässig (Rückwärtskompatibilität).
+model ProductShippingOption {
+  id            String          @id @default(cuid())
+  productId     String
+  methodId      String
+  isRecommended Boolean         @default(false)
+  sortOrder     Int             @default(0)
+  createdAt     DateTime        @default(now())
+
+  product Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  method  ShippingMethod @relation(fields: [methodId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, methodId])
+  @@index([productId])
+  @@index([methodId])
 }
 
 model ShippingRule {

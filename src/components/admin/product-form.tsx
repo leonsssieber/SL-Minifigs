@@ -5,12 +5,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ArrowLeft, X } from "lucide-react";
+import { ArrowLeft, X, Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
@@ -21,7 +22,13 @@ import {
 } from "@/components/ui/select";
 import { BlobUploader } from "@/components/blob-uploader";
 import { createProduct, updateProduct } from "@/server/actions/products";
+import { lookupBrickognizeFromUrl } from "@/server/actions/brickognize";
 import { slugify, decimalToNumber } from "@/lib/utils";
+
+interface ShippingOptionState {
+  methodId: string;
+  isRecommended: boolean;
+}
 
 interface ProductFormData {
   id?: string;
@@ -43,6 +50,7 @@ interface ProductFormData {
   active?: boolean;
   featured?: boolean;
   images?: { url: string; key?: string | null; alt?: string | null }[];
+  shippingOptions?: ShippingOptionState[];
 }
 
 interface Props {
@@ -59,13 +67,18 @@ export function ProductForm({ product, categories, shippingMethods }: Props) {
   const [name, setName] = useState(product?.name ?? "");
   const [slug, setSlug] = useState(product?.slug ?? "");
   const [slugTouched, setSlugTouched] = useState(!!product?.slug);
+  const [legoSetNumber, setLegoSetNumber] = useState(product?.legoSetNumber ?? "");
   const [images, setImages] = useState<{ url: string; key?: string | null; alt?: string | null }[]>(
     product?.images ?? []
   );
   const [active, setActive] = useState(product?.active ?? true);
   const [featured, setFeatured] = useState(product?.featured ?? false);
   const [stockType, setStockType] = useState(product?.stockType ?? "UNIQUE");
+  const [shippingOpts, setShippingOpts] = useState<ShippingOptionState[]>(
+    product?.shippingOptions ?? []
+  );
   const [errors, setErrors] = useState<Record<string, string[]>>({});
+  const [recognizing, setRecognizing] = useState(false);
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -75,6 +88,7 @@ export function ProductForm({ product, categories, shippingMethods }: Props) {
     fd.set("featured", featured ? "true" : "false");
     fd.set("images", JSON.stringify(images));
     fd.set("stockType", stockType);
+    fd.set("shippingOptions", JSON.stringify(shippingOpts));
 
     start(async () => {
       const result = isEdit
@@ -92,15 +106,54 @@ export function ProductForm({ product, categories, shippingMethods }: Props) {
     });
   }
 
+  function toggleMethod(methodId: string, on: boolean) {
+    setShippingOpts((arr) => {
+      if (on) {
+        if (arr.some((o) => o.methodId === methodId)) return arr;
+        return [...arr, { methodId, isRecommended: arr.length === 0 }];
+      }
+      return arr.filter((o) => o.methodId !== methodId);
+    });
+  }
+
+  function setRecommended(methodId: string) {
+    setShippingOpts((arr) =>
+      arr.map((o) => ({ ...o, isRecommended: o.methodId === methodId }))
+    );
+  }
+
+  async function runRecognition(imageUrl: string) {
+    setRecognizing(true);
+    try {
+      const result = await lookupBrickognizeFromUrl(imageUrl);
+      if (!result.ok || result.predictions.length === 0) {
+        toast.error(result.error ?? "Keine Erkennung möglich.");
+        return;
+      }
+      const top = result.predictions[0];
+      // Felder nur befüllen, wenn sie leer sind (kein Überschreiben).
+      if (!name && top.name) {
+        setName(top.name);
+        if (!slugTouched) setSlug(slugify(top.name));
+      }
+      if (!legoSetNumber && top.id) {
+        setLegoSetNumber(top.id);
+      }
+      toast.success(`Erkannt: ${top.name} (${top.id})`);
+    } finally {
+      setRecognizing(false);
+    }
+  }
+
   return (
-    <form onSubmit={onSubmit} className="p-8 space-y-6 max-w-5xl">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+    <form onSubmit={onSubmit} className="p-4 sm:p-8 space-y-6 max-w-5xl">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-3 min-w-0">
           <Link href="/admin/produkte">
             <Button variant="ghost" size="icon"><ArrowLeft className="h-4 w-4" /></Button>
           </Link>
-          <div>
-            <h1 className="text-2xl font-bold">{isEdit ? "Produkt bearbeiten" : "Neues Produkt"}</h1>
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold truncate">{isEdit ? "Produkt bearbeiten" : "Neues Produkt"}</h1>
           </div>
         </div>
         <Button type="submit" disabled={pending}>
@@ -136,7 +189,7 @@ export function ProductForm({ product, categories, shippingMethods }: Props) {
                   onChange={(e) => { setSlug(slugify(e.target.value)); setSlugTouched(true); }}
                   required
                 />
-                <p className="text-xs text-muted-foreground">/produkte/{slug || "..."}</p>
+                <p className="text-xs text-muted-foreground break-all">/produkte/{slug || "..."}</p>
                 {errors.slug && <p className="text-xs text-destructive">{errors.slug[0]}</p>}
               </div>
               <div className="space-y-2">
@@ -163,7 +216,25 @@ export function ProductForm({ product, categories, shippingMethods }: Props) {
           </Card>
 
           <Card>
-            <CardHeader><CardTitle>Bilder</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between flex-wrap gap-2">
+                <span>Bilder</span>
+                {images.length > 0 && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => runRecognition(images[0].url)}
+                    disabled={recognizing}
+                    className="gap-1.5"
+                  >
+                    {recognizing
+                      ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Erkenne…</>
+                      : <><Sparkles className="h-3.5 w-3.5" /> Brickognize</>}
+                  </Button>
+                )}
+              </CardTitle>
+            </CardHeader>
             <CardContent className="space-y-4">
               {images.length > 0 && (
                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
@@ -192,16 +263,20 @@ export function ProductForm({ product, categories, shippingMethods }: Props) {
                   endpoint="productImage"
                   maxFiles={10 - images.length}
                   onUploaded={(files) => {
-                    setImages((arr) => [
-                      ...arr,
-                      ...files.map((f) => ({ url: f.url, key: f.pathname, alt: name })),
-                    ].slice(0, 10));
+                    const newImgs = files.map((f) => ({ url: f.url, key: f.pathname, alt: name }));
+                    setImages((arr) => [...arr, ...newImgs].slice(0, 10));
                     toast.success(`${files.length} Bild(er) hochgeladen`);
+                    // Wenn vorher keine Bilder vorhanden waren UND Name/Teilenummer leer → automatisch erkennen.
+                    if (images.length === 0 && newImgs.length > 0 && (!name || !legoSetNumber)) {
+                      runRecognition(newImgs[0].url);
+                    }
                   }}
                   onError={(msg) => toast.error(`Upload fehlgeschlagen: ${msg}`)}
                 />
               )}
-              <p className="text-xs text-muted-foreground">Max. 10 Bilder, je 4 MB. Erstes Bild = Hauptbild.</p>
+              <p className="text-xs text-muted-foreground">
+                Max. 10 Bilder, je 4 MB. Erstes Bild = Hauptbild. Lade ein Foto hoch, um Name und Teilenummer automatisch via Brickognize zu erkennen.
+              </p>
             </CardContent>
           </Card>
         </div>
@@ -235,8 +310,15 @@ export function ProductForm({ product, categories, shippingMethods }: Props) {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="legoSetNumber">Lego Set-Nr.</Label>
-                <Input id="legoSetNumber" name="legoSetNumber" defaultValue={product?.legoSetNumber ?? ""} placeholder="z.B. 75300" />
+                <Label htmlFor="legoSetNumber">LEGO Teilenummer</Label>
+                <Input
+                  id="legoSetNumber"
+                  name="legoSetNumber"
+                  value={legoSetNumber}
+                  onChange={(e) => setLegoSetNumber(e.target.value)}
+                  placeholder="z.B. sw1010 oder 75300"
+                />
+                <p className="text-xs text-muted-foreground">Für Sets, Minifiguren oder Einzelteile (Bricklink-/Rebrickable-ID).</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="sku">SKU</Label>
@@ -305,16 +387,59 @@ export function ProductForm({ product, categories, shippingMethods }: Props) {
                 </Select>
                 <p className="text-xs text-muted-foreground">Wird zur Berechnung der Versandkosten verwendet.</p>
               </div>
+              <div className="space-y-3">
+                <div>
+                  <Label>Verfügbare Versandmethoden</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Wähle alle Methoden, die der Kunde wählen darf. Markiere eine als „empfohlen". Ohne Auswahl sind alle aktiven Methoden zulässig.
+                  </p>
+                </div>
+                {shippingMethods.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Keine Versandmethoden konfiguriert.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {shippingMethods.map((m) => {
+                      const entry = shippingOpts.find((o) => o.methodId === m.id);
+                      const checked = !!entry;
+                      const isRec = entry?.isRecommended ?? false;
+                      return (
+                        <div key={m.id} className="flex items-center gap-3 p-2 rounded-md border">
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={(c) => toggleMethod(m.id, !!c)}
+                          />
+                          <span className="flex-1 text-sm">{m.name}</span>
+                          {checked && (
+                            <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+                              <input
+                                type="radio"
+                                name="recommended-method"
+                                checked={isRec}
+                                onChange={() => setRecommended(m.id)}
+                                className="h-3.5 w-3.5"
+                              />
+                              empfohlen
+                            </label>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
               <div className="space-y-2">
-                <Label htmlFor="customShippingMethodId">Versandmethode erzwingen (optional)</Label>
+                <Label htmlFor="customShippingMethodId">Versandmethode erzwingen (Legacy, optional)</Label>
                 <Select name="customShippingMethodId" defaultValue={product?.customShippingMethodId ?? ""}>
-                  <SelectTrigger><SelectValue placeholder="Automatisch (über Regeln)" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
                   <SelectContent>
                     {shippingMethods.map((m) => (
                       <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-muted-foreground">
+                  Nur setzen, wenn der Kunde keine Wahl haben soll. Mehrere wählbare Methoden bitte oben markieren.
+                </p>
               </div>
             </CardContent>
           </Card>

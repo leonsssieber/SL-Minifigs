@@ -11,6 +11,10 @@ export interface ShippingItem {
   shippingCategory?: string | null; // z.B. "minifigure", "small_set", "large_set"
   weightGrams?: number | null;
   customShippingMethodId?: string | null;
+  // Pro Produkt erlaubte Methoden — leeres Array bedeutet "keine Einschränkung" (alle erlaubt).
+  allowedMethodIds?: string[];
+  // Vom Admin pro Produkt als "empfohlen" markierte Methoden.
+  recommendedMethodIds?: string[];
 }
 
 // Wir akzeptieren beide Formen: Prisma-Modelle (mit Decimal) und einfache JS-Objekte
@@ -52,6 +56,7 @@ export interface ShippingOption {
   price: number;
   matchedRuleName?: string;
   isCheapest: boolean;
+  isRecommended: boolean;
 }
 
 export interface ShippingCalculation {
@@ -145,7 +150,7 @@ export function calculateShipping(
   const context = buildContext(items);
   const activeMethods = methods.filter((m) => m.active);
 
-  // Override-Check
+  // 1) Legacy-Override (customShippingMethodId): erzwingt EINE Methode für den ganzen Cart.
   const overrides = items
     .map((i) => i.customShippingMethodId)
     .filter((id): id is string => !!id);
@@ -164,10 +169,59 @@ export function calculateShipping(
     }
   }
 
+  // 2) Per-Produkt erlaubte Methoden (neue Logik) — Intersection über alle Items.
+  // Produkte ohne Einträge = keine Einschränkung.
+  let allowedSet: Set<string> | null = null;
+  for (const item of items) {
+    const allowed = item.allowedMethodIds;
+    if (allowed && allowed.length > 0) {
+      const set = new Set<string>(allowed);
+      if (allowedSet === null) {
+        allowedSet = set;
+      } else {
+        const prev: Set<string> = allowedSet;
+        const intersection = new Set<string>();
+        for (const id of prev) {
+          if (set.has(id)) intersection.add(id);
+        }
+        allowedSet = intersection;
+      }
+    }
+  }
+
+  // 3) Welche Methoden werden überhaupt betrachtet?
+  let methodsToConsider = activeMethods;
+  if (forcedMethodId) {
+    methodsToConsider = methodsToConsider.filter((m) => m.id === forcedMethodId);
+  }
+  if (allowedSet) {
+    methodsToConsider = methodsToConsider.filter((m) => allowedSet!.has(m.id));
+  }
+
+  // 4) Aggregierte "Empfohlen"-Markierung pro Methode: empfohlen, wenn jedes
+  // Item im Cart sie als empfohlen markiert oder gar keine Empfehlungen hat.
+  const recommendedMethodId = (() => {
+    const candidates = new Map<string, number>();
+    let itemsWithRecommendations = 0;
+    for (const item of items) {
+      if (item.recommendedMethodIds && item.recommendedMethodIds.length > 0) {
+        itemsWithRecommendations++;
+        for (const id of item.recommendedMethodIds) {
+          candidates.set(id, (candidates.get(id) ?? 0) + 1);
+        }
+      }
+    }
+    if (itemsWithRecommendations === 0) return null;
+    // Methode mit den meisten Empfehlungen wählen
+    let best: string | null = null;
+    let bestCount = 0;
+    for (const [id, count] of candidates) {
+      if (count > bestCount) { best = id; bestCount = count; }
+    }
+    return best;
+  })();
+
   const options: ShippingOption[] = [];
-  const methodsToConsider = forcedMethodId
-    ? activeMethods.filter((m) => m.id === forcedMethodId)
-    : activeMethods;
 
   for (const method of methodsToConsider) {
     const methodRules = rules
@@ -177,18 +231,17 @@ export function calculateShipping(
     const basePrice = decimalToNumber(method.basePrice);
 
     if (methodRules.length === 0) {
-      // Fallback: Methode ohne Regeln gilt immer
       options.push({
         methodId: method.id,
         methodName: method.name,
         description: method.description,
         price: basePrice,
         isCheapest: false,
+        isRecommended: method.id === recommendedMethodId,
       });
       continue;
     }
 
-    // Suche erste passende Regel
     const matchedRule = methodRules.find((r) => ruleMatches(r, context));
     if (matchedRule) {
       options.push({
@@ -198,6 +251,7 @@ export function calculateShipping(
         price: rulePrice(matchedRule, basePrice, context),
         matchedRuleName: matchedRule.name,
         isCheapest: false,
+        isRecommended: method.id === recommendedMethodId,
       });
     }
   }

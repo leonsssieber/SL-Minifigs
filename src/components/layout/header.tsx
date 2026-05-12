@@ -25,6 +25,7 @@ export function Header({ user, shopName }: HeaderProps) {
     { href: "/produkte", label: "Alle Produkte" },
     { href: "/kategorie/lego-sets", label: "Lego Sets" },
     { href: "/kategorie/minifiguren", label: "Minifiguren" },
+    { href: "/ankauf", label: "Ankauf" },
     { href: "/kontakt", label: "Kontakt" },
   ];
 

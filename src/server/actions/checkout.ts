@@ -27,6 +27,7 @@ export async function calculateShippingForCart(items: CartItemForServer[]) {
       select: {
         id: true, price: true, weightGrams: true, shippingCategory: true,
         customShippingMethodId: true, stockQuantity: true, active: true,
+        shippingOptions: { select: { methodId: true, isRecommended: true } },
       },
     }),
     db.shippingMethod.findMany({ where: { active: true }, orderBy: { sortOrder: "asc" } }),
@@ -44,6 +45,8 @@ export async function calculateShippingForCart(items: CartItemForServer[]) {
         shippingCategory: p.shippingCategory,
         weightGrams: p.weightGrams,
         customShippingMethodId: p.customShippingMethodId,
+        allowedMethodIds: p.shippingOptions.map((s) => s.methodId),
+        recommendedMethodIds: p.shippingOptions.filter((s) => s.isRecommended).map((s) => s.methodId),
       };
     })
     .filter((x): x is NonNullable<typeof x> => x != null);
@@ -52,7 +55,8 @@ export async function calculateShippingForCart(items: CartItemForServer[]) {
   return {
     options: calc.options.map((o) => ({
       methodId: o.methodId, methodName: o.methodName,
-      description: o.description, price: o.price, isCheapest: o.isCheapest,
+      description: o.description, price: o.price,
+      isCheapest: o.isCheapest, isRecommended: o.isRecommended,
     })),
     cheapest: calc.cheapest,
     forcedMethodId: calc.forcedMethodId,
@@ -104,7 +108,10 @@ export async function placeOrderAction(
   const productIds = cartItems.map((i) => i.productId);
   const products = await db.product.findMany({
     where: { id: { in: productIds }, active: true },
-    include: { images: { orderBy: { sortOrder: "asc" }, take: 1 } },
+    include: {
+      images: { orderBy: { sortOrder: "asc" }, take: 1 },
+      shippingOptions: { select: { methodId: true, isRecommended: true } },
+    },
   });
   if (products.length !== productIds.length) {
     return { ok: false, error: "Einige Produkte sind nicht mehr verfügbar." };
@@ -126,6 +133,8 @@ export async function placeOrderAction(
       shippingCategory: p.shippingCategory,
       weightGrams: p.weightGrams,
       customShippingMethodId: p.customShippingMethodId,
+      allowedMethodIds: p.shippingOptions.map((s) => s.methodId),
+      recommendedMethodIds: p.shippingOptions.filter((s) => s.isRecommended).map((s) => s.methodId),
     };
   });
   const methods = await db.shippingMethod.findMany({ where: { active: true } });

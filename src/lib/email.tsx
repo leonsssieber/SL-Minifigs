@@ -439,6 +439,42 @@ export function ankaufReturnedEmail(data: {
   );
 }
 
+export function adminTwoFactorCodeEmail(data: { name: string; code: string; ttlMinutes: number }) {
+  return (
+    <Html>
+      <Head />
+      <Body style={main}>
+        <Container style={container}>
+          <Heading style={heading}>Admin-Login bestätigen</Heading>
+          <Text style={para}>Hallo {data.name || "Admin"},</Text>
+          <Text style={para}>
+            jemand hat versucht, sich in den Admin-Bereich von {shopName} einzuloggen.
+            Bitte gib zur Bestätigung diesen Code ein:
+          </Text>
+          <div style={{
+            fontFamily: "monospace",
+            fontSize: "28px",
+            fontWeight: 700,
+            letterSpacing: "0.4em",
+            textAlign: "center" as const,
+            margin: "20px 0",
+            padding: "16px",
+            background: "#f1f5f9",
+            borderRadius: "8px",
+            color: "#0f172a",
+          }}>
+            {data.code}
+          </div>
+          <Text style={para}>
+            Der Code ist {data.ttlMinutes} Minuten gültig. Falls du dich nicht eingeloggt hast,
+            ändere bitte umgehend dein Passwort.
+          </Text>
+        </Container>
+      </Body>
+    </Html>
+  );
+}
+
 export function contactNotificationEmail(data: { name: string; email: string; subject: string; message: string }) {
   return (
     <Html>

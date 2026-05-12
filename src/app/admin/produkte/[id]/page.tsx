@@ -9,7 +9,10 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
   const [product, categories, methods] = await Promise.all([
     db.product.findUnique({
       where: { id },
-      include: { images: { orderBy: { sortOrder: "asc" } } },
+      include: {
+        images: { orderBy: { sortOrder: "asc" } },
+        shippingOptions: { orderBy: { sortOrder: "asc" } },
+      },
     }),
     db.productCategory.findMany({ where: { active: true }, orderBy: { sortOrder: "asc" }, select: { id: true, name: true } }),
     db.shippingMethod.findMany({ where: { active: true }, orderBy: { sortOrder: "asc" }, select: { id: true, name: true } }),
@@ -38,6 +41,10 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
         active: product.active,
         featured: product.featured,
         images: product.images.map((i) => ({ url: i.url, key: i.key, alt: i.alt })),
+        shippingOptions: product.shippingOptions.map((o) => ({
+          methodId: o.methodId,
+          isRecommended: o.isRecommended,
+        })),
       }}
       categories={categories}
       shippingMethods={methods}

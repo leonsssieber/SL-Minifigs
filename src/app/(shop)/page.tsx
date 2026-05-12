@@ -46,13 +46,13 @@ export default async function HomePage() {
           className="absolute -bottom-24 -left-24 h-80 w-80 rounded-full bg-accent/20 blur-3xl"
           aria-hidden
         />
-        <div className="container relative py-20 md:py-28">
+        <div className="container relative py-14 sm:py-20 md:py-28">
           <div className="max-w-2xl">
             <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent text-accent-foreground text-xs font-bold mb-5 shadow-sm">
               <span className="inline-block h-1.5 w-1.5 rounded-full bg-foreground/70" />
               Schweizer Versand · Geprüfte Qualität
             </span>
-            <h1 className="text-4xl md:text-6xl font-black tracking-tight text-balance mb-5 leading-[1.05]">
+            <h1 className="text-3xl sm:text-4xl md:text-6xl font-black tracking-tight text-balance mb-5 leading-[1.05]">
               Minifiguren, die Sammler{" "}
               <span className="relative inline-block">
                 <span className="relative z-10 text-primary">lieben.</span>
@@ -147,7 +147,7 @@ export default async function HomePage() {
               Alle ansehen →
             </Link>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
             {featured.map((p) => (
               <ProductCard key={p.id} product={p} />
             ))}
@@ -169,7 +169,7 @@ export default async function HomePage() {
             <p className="text-xs mt-1">Im Admin unter „Produkte" anlegen, um sie hier anzuzeigen.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
             {newest.map((p) => (
               <ProductCard key={p.id} product={p} />
             ))}

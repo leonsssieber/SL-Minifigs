@@ -22,7 +22,7 @@ export async function GET() {
     "Name": p.name,
     "Kategorie": p.category.name,
     "SKU": p.sku ?? "",
-    "Lego Set-Nr.": p.legoSetNumber ?? "",
+    "LEGO Teilenummer": p.legoSetNumber ?? "",
     "Zustand": p.condition,
     "Preis (CHF)": decimalToNumber(p.price),
     "Vergleichspreis (CHF)": p.comparePrice != null ? decimalToNumber(p.comparePrice) : "",

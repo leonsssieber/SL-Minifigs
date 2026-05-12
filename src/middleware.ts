@@ -22,8 +22,8 @@ export default auth(async (req) => {
       return NextResponse.redirect(url);
     }
 
-    // 2FA: Wenn aktiviert und nicht die 2FA-Seite selbst, Cookie prüfen
-    if (session.user.twoFactorEnabled && pathname !== "/admin/2fa") {
+    // 2FA per E-Mail ist für alle Admins verpflichtend.
+    if (pathname !== "/admin/2fa") {
       const cookie = req.cookies.get(TWO_FA_COOKIE_NAME)?.value;
       const verified = cookie ? await verify2faCookie(cookie, session.user.id) : false;
       if (!verified) {

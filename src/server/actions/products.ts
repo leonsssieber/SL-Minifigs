@@ -7,7 +7,7 @@ import { productSchema } from "@/lib/validation";
 import { slugify } from "@/lib/utils";
 import type { ActionResult } from "@/server/actions/auth";
 
-function parseImages(raw: FormDataEntryValue | null) {
+function parseJsonArray(raw: FormDataEntryValue | null) {
   if (!raw) return [];
   try {
     const parsed = JSON.parse(raw.toString());
@@ -34,9 +34,10 @@ function parseProductForm(formData: FormData) {
     weightGrams: formData.get("weightGrams")?.toString() || null,
     shippingCategory: formData.get("shippingCategory")?.toString() || null,
     customShippingMethodId: formData.get("customShippingMethodId")?.toString() || null,
+    shippingOptions: parseJsonArray(formData.get("shippingOptions")),
     active: formData.get("active") === "true" || formData.get("active") === "on",
     featured: formData.get("featured") === "true" || formData.get("featured") === "on",
-    images: parseImages(formData.get("images")),
+    images: parseJsonArray(formData.get("images")),
   };
 }
 
@@ -81,6 +82,13 @@ export async function createProduct(formData: FormData): Promise<ActionResult<{ 
             url: img.url,
             key: img.key,
             alt: img.alt,
+            sortOrder: i,
+          })),
+        },
+        shippingOptions: {
+          create: data.shippingOptions.map((opt, i) => ({
+            methodId: opt.methodId,
+            isRecommended: opt.isRecommended,
             sortOrder: i,
           })),
         },
@@ -148,6 +156,15 @@ export async function updateProduct(id: string, formData: FormData): Promise<Act
           url: img.url,
           key: img.key,
           alt: img.alt,
+          sortOrder: i,
+        })),
+      }),
+      db.productShippingOption.deleteMany({ where: { productId: id } }),
+      db.productShippingOption.createMany({
+        data: data.shippingOptions.map((opt, i) => ({
+          productId: id,
+          methodId: opt.methodId,
+          isRecommended: opt.isRecommended,
           sortOrder: i,
         })),
       }),

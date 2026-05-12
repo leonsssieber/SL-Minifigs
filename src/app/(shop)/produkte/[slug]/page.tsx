@@ -7,7 +7,8 @@ import type { Metadata } from "next";
 import { db } from "@/lib/db";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { formatCHF, conditionLabel, decimalToNumber } from "@/lib/utils";
+import { formatCHF, conditionLabel, decimalToNumber, bricklinkUrl } from "@/lib/utils";
+import { ExternalLink } from "lucide-react";
 import { ProductCard } from "@/components/shop/product-card";
 import { AddToCartButton } from "./add-to-cart-button";
 import { WishlistButton } from "@/components/shop/wishlist-button";
@@ -60,12 +61,12 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   const isSoldOut = product.stockQuantity <= 0;
 
   return (
-    <div className="container py-8">
-      <nav className="text-xs text-muted-foreground mb-4 flex items-center gap-1">
-        <Link href="/" className="hover:text-foreground">Home</Link> /
-        <Link href="/produkte" className="hover:text-foreground">Produkte</Link> /
-        <Link href={`/kategorie/${product.category.slug}`} className="hover:text-foreground">{product.category.name}</Link> /
-        <span className="text-foreground line-clamp-1">{product.name}</span>
+    <div className="container py-6 sm:py-8">
+      <nav className="text-xs text-muted-foreground mb-4 flex flex-wrap items-center gap-x-1 gap-y-0.5 min-w-0">
+        <Link href="/" className="hover:text-foreground">Home</Link> <span>/</span>
+        <Link href="/produkte" className="hover:text-foreground">Produkte</Link> <span>/</span>
+        <Link href={`/kategorie/${product.category.slug}`} className="hover:text-foreground">{product.category.name}</Link> <span>/</span>
+        <span className="text-foreground line-clamp-1 max-w-full">{product.name}</span>
       </nav>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
@@ -76,21 +77,32 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
             <div className="flex flex-wrap gap-2">
               <Badge variant="secondary">{conditionLabel(product.condition)}</Badge>
               {product.legoSetNumber && (
-                <Badge variant="outline">Set-Nr. {product.legoSetNumber}</Badge>
+                <a
+                  href={bricklinkUrl(product.legoSetNumber)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex"
+                  title="Auf BrickLink ansehen"
+                >
+                  <Badge variant="outline" className="gap-1 cursor-pointer hover:bg-muted">
+                    Nr. {product.legoSetNumber}
+                    <ExternalLink className="h-3 w-3" />
+                  </Badge>
+                </a>
               )}
               {product.featured && <Badge variant="warning">★ Featured</Badge>}
             </div>
-            <h1 className="text-3xl font-bold leading-tight">{product.name}</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold leading-tight break-words">{product.name}</h1>
             {product.shortDescription && (
               <p className="text-muted-foreground">{product.shortDescription}</p>
             )}
           </div>
 
-          <div className="flex items-baseline gap-3">
-            <span className="text-3xl font-bold">{formatCHF(price)}</span>
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <span className="text-2xl sm:text-3xl font-bold whitespace-nowrap">{formatCHF(price)}</span>
             {comparePrice && comparePrice > price && (
               <>
-                <span className="text-lg text-muted-foreground line-through">{formatCHF(comparePrice)}</span>
+                <span className="text-base sm:text-lg text-muted-foreground line-through whitespace-nowrap">{formatCHF(comparePrice)}</span>
                 <Badge variant="destructive">−{Math.round(((comparePrice - price) / comparePrice) * 100)}%</Badge>
               </>
             )}
@@ -151,8 +163,19 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
             <dd>{conditionLabel(product.condition)}</dd>
             {product.legoSetNumber && (
               <>
-                <dt className="text-muted-foreground">Lego Set-Nr.</dt>
-                <dd className="font-mono">{product.legoSetNumber}</dd>
+                <dt className="text-muted-foreground">LEGO Teilenummer</dt>
+                <dd className="font-mono break-all">
+                  <a
+                    href={bricklinkUrl(product.legoSetNumber)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-primary hover:underline"
+                  >
+                    {product.legoSetNumber}
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                  <span className="text-xs text-muted-foreground ml-1">(BrickLink)</span>
+                </dd>
               </>
             )}
             {product.weightGrams && (

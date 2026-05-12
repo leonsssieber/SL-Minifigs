@@ -54,12 +54,12 @@ export function ProductCard({ product }: { product: ProductCardData }) {
           </div>
         )}
       </div>
-      <div className="flex-1 p-4 flex flex-col gap-2">
-        <h3 className="font-medium text-sm line-clamp-2 leading-snug">{product.name}</h3>
-        <div className="mt-auto flex items-baseline gap-2">
-          <span className="font-bold text-lg">{formatCHF(price)}</span>
+      <div className="flex-1 p-3 sm:p-4 flex flex-col gap-2 min-w-0">
+        <h3 className="font-medium text-sm line-clamp-2 leading-snug break-words">{product.name}</h3>
+        <div className="mt-auto flex flex-wrap items-baseline gap-x-2 gap-y-0.5 min-w-0">
+          <span className="font-bold text-base sm:text-lg whitespace-nowrap">{formatCHF(price)}</span>
           {comparePrice && comparePrice > price && (
-            <span className="text-xs text-muted-foreground line-through">
+            <span className="text-xs text-muted-foreground line-through whitespace-nowrap">
               {formatCHF(comparePrice)}
             </span>
           )}

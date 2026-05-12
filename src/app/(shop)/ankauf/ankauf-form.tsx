@@ -6,7 +6,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { BlobUploader } from "@/components/blob-uploader";
 import { submitAnkaufRequest } from "@/server/actions/ankauf";
-import { ankaufSubmitSchema, type AnkaufSubmitInput } from "@/lib/validation";
+import { ankaufSubmitSchema } from "@/lib/validation";
+import { z } from "zod";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,10 @@ interface UploadedImage {
   url: string;
   key: string;
 }
+
+// Client-Form-Schema ohne images — Bilder werden separat im State verwaltet
+const ankaufFormClientSchema = ankaufSubmitSchema.omit({ images: true });
+type AnkaufFormClientInput = z.infer<typeof ankaufFormClientSchema>;
 
 export function AnkaufForm() {
   const router = useRouter();
@@ -29,12 +34,11 @@ export function AnkaufForm() {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<AnkaufSubmitInput & { website?: string }>({
-    resolver: zodResolver(ankaufSubmitSchema),
-    defaultValues: { images: [] },
+  } = useForm<AnkaufFormClientInput>({
+    resolver: zodResolver(ankaufFormClientSchema),
   });
 
-  const onSubmit = async (data: AnkaufSubmitInput & { website?: string }) => {
+  const onSubmit = async (data: AnkaufFormClientInput) => {
     if (images.length === 0) {
       setServerError("Bitte mindestens 1 Bild hochladen.");
       return;
@@ -155,7 +159,9 @@ export function AnkaufForm() {
           />
         )}
         {uploadError && <p className="text-sm text-destructive">{uploadError}</p>}
-        {errors.images && <p className="text-sm text-destructive">{errors.images.message as string}</p>}
+        {images.length === 0 && serverError && (
+          <p className="text-sm text-destructive">Mindestens 1 Bild erforderlich.</p>
+        )}
       </div>
 
       <Button type="submit" size="lg" disabled={submitting} className="w-full sm:w-auto">
