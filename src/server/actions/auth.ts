@@ -67,7 +67,7 @@ export async function registerAction(formData: FormData): Promise<ActionResult> 
   return { ok: true };
 }
 
-export async function loginAction(formData: FormData): Promise<ActionResult> {
+export async function loginAction(formData: FormData): Promise<ActionResult<{ isAdmin: boolean }>> {
   const ip = getClientIp(await headers());
   const rl = await rateLimit(`login:${ip}`, 10, 60);
   if (!rl.success) {
@@ -83,13 +83,20 @@ export async function loginAction(formData: FormData): Promise<ActionResult> {
     return { ok: false, error: "Email oder Passwort ungültig." };
   }
 
+  const email = parsed.data.email.toLowerCase();
+
   try {
     await signIn("credentials", {
-      email: parsed.data.email.toLowerCase(),
+      email,
       password: parsed.data.password,
       redirect: false,
     });
-    return { ok: true };
+    // Admin-Status separat aus DB lesen (signIn liefert keine User-Daten zurück).
+    const dbUser = await db.user.findUnique({
+      where: { email },
+      select: { isAdmin: true },
+    });
+    return { ok: true, data: { isAdmin: dbUser?.isAdmin ?? false } };
   } catch {
     return { ok: false, error: "Email oder Passwort ungültig." };
   }

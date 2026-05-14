@@ -11,8 +11,9 @@ export default async function AdminDashboardPage() {
   const [productCount, activeProducts, pendingOrders, recentOrders, totalRevenueResult] = await Promise.all([
     db.product.count(),
     db.product.count({ where: { active: true, stockQuantity: { gt: 0 } } }),
-    db.order.count({ where: { status: { in: ["PENDING", "PAID", "PROCESSING"] } } }),
+    db.order.count({ where: { status: { in: ["PENDING", "PAID", "PROCESSING"] }, deletedAt: null } }),
     db.order.findMany({
+      where: { deletedAt: null },
       orderBy: { createdAt: "desc" },
       take: 10,
       select: {
@@ -23,7 +24,7 @@ export default async function AdminDashboardPage() {
     }),
     db.order.aggregate({
       _sum: { total: true },
-      where: { status: { in: ["PAID", "PROCESSING", "SHIPPED", "COMPLETED"] } },
+      where: { status: { in: ["PAID", "PROCESSING", "SHIPPED", "COMPLETED"] }, deletedAt: null },
     }),
   ]);
 

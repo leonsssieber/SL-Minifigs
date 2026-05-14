@@ -7,6 +7,7 @@ import { orderUpdateSchema } from "@/lib/validation";
 import { sendEmail, shippingNotificationEmail } from "@/lib/email";
 import { formatCHF, decimalToNumber } from "@/lib/utils";
 import type { ActionResult } from "@/server/actions/auth";
+import { redirect } from "next/navigation";
 
 export async function updateOrder(id: string, formData: FormData): Promise<ActionResult> {
   try {
@@ -111,4 +112,91 @@ export async function updateOrder(id: string, formData: FormData): Promise<Actio
     console.error(e);
     return { ok: false, error: "Fehler beim Speichern." };
   }
+}
+
+export async function softDeleteOrder(id: string): Promise<ActionResult> {
+  try {
+    const admin = await requireAdmin();
+    const order = await db.order.findUnique({ where: { id }, select: { id: true, deletedAt: true } });
+    if (!order) return { ok: false, error: "Nicht gefunden." };
+    if (order.deletedAt) return { ok: true };
+    await db.order.update({ where: { id }, data: { deletedAt: new Date() } });
+    await logAudit({
+      userId: admin.id,
+      action: "ORDER_SOFT_DELETED",
+      entity: "Order",
+      entityId: id,
+    });
+    revalidatePath("/admin/bestellungen");
+    revalidatePath("/admin/papierkorb");
+    return { ok: true };
+  } catch (e) {
+    if (e instanceof Error && e.message === "FORBIDDEN") return { ok: false, error: "Verboten" };
+    console.error(e);
+    return { ok: false, error: "Fehler beim Löschen." };
+  }
+}
+
+export async function restoreOrder(id: string): Promise<ActionResult> {
+  try {
+    const admin = await requireAdmin();
+    await db.order.update({ where: { id }, data: { deletedAt: null } });
+    await logAudit({
+      userId: admin.id,
+      action: "ORDER_RESTORED",
+      entity: "Order",
+      entityId: id,
+    });
+    revalidatePath("/admin/bestellungen");
+    revalidatePath("/admin/papierkorb");
+    return { ok: true };
+  } catch (e) {
+    if (e instanceof Error && e.message === "FORBIDDEN") return { ok: false, error: "Verboten" };
+    console.error(e);
+    return { ok: false, error: "Fehler beim Wiederherstellen." };
+  }
+}
+
+export async function hardDeleteOrder(id: string): Promise<ActionResult> {
+  try {
+    const admin = await requireAdmin();
+    const order = await db.order.findUnique({ where: { id }, select: { id: true, deletedAt: true, orderNumber: true } });
+    if (!order) return { ok: false, error: "Nicht gefunden." };
+    if (!order.deletedAt) return { ok: false, error: "Bestellung muss zuerst in den Papierkorb verschoben werden." };
+    await db.order.delete({ where: { id } });
+    await logAudit({
+      userId: admin.id,
+      action: "ORDER_HARD_DELETED",
+      entity: "Order",
+      entityId: id,
+      metadata: { orderNumber: order.orderNumber },
+    });
+    revalidatePath("/admin/papierkorb");
+    return { ok: true };
+  } catch (e) {
+    if (e instanceof Error && e.message === "FORBIDDEN") return { ok: false, error: "Verboten" };
+    console.error(e);
+    return { ok: false, error: "Fehler beim endgültigen Löschen." };
+  }
+}
+
+export async function softDeleteOrderAction(formData: FormData) {
+  const id = formData.get("id") as string;
+  const result = await softDeleteOrder(id);
+  if (!result.ok) {
+    redirect(`/admin/bestellungen/${id}?error=${encodeURIComponent(result.error)}`);
+  }
+  redirect("/admin/bestellungen");
+}
+
+export async function restoreOrderAction(formData: FormData) {
+  const id = formData.get("id") as string;
+  await restoreOrder(id);
+  redirect("/admin/papierkorb");
+}
+
+export async function hardDeleteOrderAction(formData: FormData) {
+  const id = formData.get("id") as string;
+  await hardDeleteOrder(id);
+  redirect("/admin/papierkorb");
 }

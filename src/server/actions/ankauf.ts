@@ -1,7 +1,10 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { del } from "@vercel/blob";
 import { db } from "@/lib/db";
-import { requireAdmin } from "@/lib/admin";
+import { requireAdmin, logAudit } from "@/lib/admin";
 import { sendEmail } from "@/lib/email";
 import {
   ankaufSubmitSchema,
@@ -245,4 +248,109 @@ export async function adminRespondAnkauf(formData: FormData): Promise<ActionResu
   }
 
   return { ok: true };
+}
+
+// --- Soft/Hard Delete ---
+
+export async function softDeleteAnkauf(id: string): Promise<ActionResult> {
+  try {
+    const admin = await requireAdmin();
+    const request = await db.ankaufRequest.findUnique({ where: { id }, select: { id: true, deletedAt: true } });
+    if (!request) return { ok: false, error: "Nicht gefunden." };
+    if (request.deletedAt) return { ok: true };
+    await db.ankaufRequest.update({ where: { id }, data: { deletedAt: new Date() } });
+    await logAudit({
+      userId: admin.id,
+      action: "ANKAUF_SOFT_DELETED",
+      entity: "AnkaufRequest",
+      entityId: id,
+    });
+    revalidatePath("/admin/ankauf");
+    revalidatePath("/admin/papierkorb");
+    return { ok: true };
+  } catch (e) {
+    if (e instanceof Error && e.message === "FORBIDDEN") return { ok: false, error: "Verboten" };
+    console.error(e);
+    return { ok: false, error: "Fehler beim Löschen." };
+  }
+}
+
+export async function restoreAnkauf(id: string): Promise<ActionResult> {
+  try {
+    const admin = await requireAdmin();
+    await db.ankaufRequest.update({ where: { id }, data: { deletedAt: null } });
+    await logAudit({
+      userId: admin.id,
+      action: "ANKAUF_RESTORED",
+      entity: "AnkaufRequest",
+      entityId: id,
+    });
+    revalidatePath("/admin/ankauf");
+    revalidatePath("/admin/papierkorb");
+    return { ok: true };
+  } catch (e) {
+    if (e instanceof Error && e.message === "FORBIDDEN") return { ok: false, error: "Verboten" };
+    console.error(e);
+    return { ok: false, error: "Fehler beim Wiederherstellen." };
+  }
+}
+
+export async function hardDeleteAnkauf(id: string): Promise<ActionResult> {
+  try {
+    const admin = await requireAdmin();
+    const request = await db.ankaufRequest.findUnique({
+      where: { id },
+      select: { id: true, deletedAt: true, name: true, images: { select: { url: true } } },
+    });
+    if (!request) return { ok: false, error: "Nicht gefunden." };
+    if (!request.deletedAt) return { ok: false, error: "Anfrage muss zuerst in den Papierkorb verschoben werden." };
+
+    // Bilder im Vercel Blob löschen (best-effort, blockiert das DB-Delete nicht).
+    const urls = request.images.map((i) => i.url).filter(Boolean);
+    if (urls.length > 0) {
+      try {
+        await del(urls);
+      } catch (err) {
+        console.error("Vercel Blob delete failed:", err);
+      }
+    }
+
+    // AnkaufImage hat onDelete: Cascade → wird automatisch mitgelöscht.
+    await db.ankaufRequest.delete({ where: { id } });
+
+    await logAudit({
+      userId: admin.id,
+      action: "ANKAUF_HARD_DELETED",
+      entity: "AnkaufRequest",
+      entityId: id,
+      metadata: { name: request.name, imageCount: urls.length },
+    });
+    revalidatePath("/admin/papierkorb");
+    return { ok: true };
+  } catch (e) {
+    if (e instanceof Error && e.message === "FORBIDDEN") return { ok: false, error: "Verboten" };
+    console.error(e);
+    return { ok: false, error: "Fehler beim endgültigen Löschen." };
+  }
+}
+
+export async function softDeleteAnkaufAction(formData: FormData) {
+  const id = formData.get("id") as string;
+  const result = await softDeleteAnkauf(id);
+  if (!result.ok) {
+    redirect(`/admin/ankauf/${id}?error=${encodeURIComponent(result.error)}`);
+  }
+  redirect("/admin/ankauf");
+}
+
+export async function restoreAnkaufAction(formData: FormData) {
+  const id = formData.get("id") as string;
+  await restoreAnkauf(id);
+  redirect("/admin/papierkorb");
+}
+
+export async function hardDeleteAnkaufAction(formData: FormData) {
+  const id = formData.get("id") as string;
+  await hardDeleteAnkauf(id);
+  redirect("/admin/papierkorb");
 }

@@ -9,6 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatCHF, formatDateTime, orderStatusLabel, conditionLabel, decimalToNumber } from "@/lib/utils";
 import { OrderEditForm } from "./order-edit-form";
+import { ConfirmActionButton } from "@/components/admin/confirm-delete-button";
+import { softDeleteOrderAction } from "@/server/actions/orders";
 
 export const metadata = { title: "Bestellung" };
 
@@ -40,6 +42,11 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           <Link href={`/api/orders/${order.id}/invoice.pdf`} target="_blank">
             <Button variant="outline" className="gap-2"><FileDown className="h-4 w-4" />Rechnung (PDF)</Button>
           </Link>
+          <ConfirmActionButton
+            variant="soft"
+            id={order.id}
+            action={softDeleteOrderAction}
+          />
         </div>
       </div>
 

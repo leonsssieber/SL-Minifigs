@@ -23,7 +23,7 @@ export default async function OrdersAdminPage({
   searchParams: Promise<{ status?: string; q?: string }>;
 }) {
   const sp = await searchParams;
-  const where: Record<string, unknown> = {};
+  const where: Record<string, unknown> = { deletedAt: null };
   if (sp.status && sp.status !== "all") where.status = sp.status;
   if (sp.q) {
     where.OR = [

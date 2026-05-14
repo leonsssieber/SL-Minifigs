@@ -282,6 +282,7 @@ model Order {
   shippedAt   DateTime?
   completedAt DateTime?
   cancelledAt DateTime?
+  deletedAt   DateTime?
   updatedAt   DateTime  @updatedAt
 
   user           User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
@@ -292,6 +293,7 @@ model Order {
   @@index([status])
   @@index([createdAt])
   @@index([orderNumber])
+  @@index([deletedAt])
 }
 
 model OrderItem {
@@ -454,12 +456,14 @@ model AnkaufRequest {
   respondedAt  DateTime?
   shippedAt    DateTime?
   completedAt  DateTime?
+  deletedAt    DateTime?
 
   images AnkaufImage[]
 
   @@index([status])
   @@index([email])
   @@index([createdAt])
+  @@index([deletedAt])
 }
 
 model AnkaufImage {

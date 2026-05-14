@@ -28,13 +28,14 @@ export default async function AdminAnkaufPage({
   const { status: filterStatus } = await searchParams;
 
   const requests = await db.ankaufRequest.findMany({
-    where: filterStatus ? { status: filterStatus } : undefined,
+    where: filterStatus ? { status: filterStatus, deletedAt: null } : { deletedAt: null },
     orderBy: { createdAt: "desc" },
     include: { images: { take: 1 } },
   });
 
   const counts = await db.ankaufRequest.groupBy({
     by: ["status"],
+    where: { deletedAt: null },
     _count: true,
   });
   const countMap = Object.fromEntries(counts.map((c) => [c.status, c._count]));

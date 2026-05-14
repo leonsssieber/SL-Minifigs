@@ -12,8 +12,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { adminRespondAnkauf } from "@/server/actions/ankauf";
+import { adminRespondAnkauf, softDeleteAnkaufAction } from "@/server/actions/ankauf";
 import { ankaufStatusValues } from "@/lib/validation";
+import { ConfirmActionButton } from "@/components/admin/confirm-delete-button";
 
 export const metadata = { title: "Ankauf-Anfrage" };
 
@@ -75,12 +76,20 @@ export default async function AdminAnkaufDetailPage({
             <p className="text-sm text-muted-foreground">{request.email} · {formatDateTime(request.createdAt)}</p>
           </div>
         </div>
-        <Link href={`${shopUrl}/ankauf/status?token=${request.publicToken}`} target="_blank">
-          <Button variant="outline" size="sm" className="gap-2">
-            <ExternalLink className="h-3.5 w-3.5" />
-            Kunden-Ansicht
-          </Button>
-        </Link>
+        <div className="flex gap-2">
+          <Link href={`${shopUrl}/ankauf/status?token=${request.publicToken}`} target="_blank">
+            <Button variant="outline" size="sm" className="gap-2">
+              <ExternalLink className="h-3.5 w-3.5" />
+              Kunden-Ansicht
+            </Button>
+          </Link>
+          <ConfirmActionButton
+            variant="soft"
+            id={request.id}
+            action={softDeleteAnkaufAction}
+            size="sm"
+          />
+        </div>
       </div>
 
       {success && (
