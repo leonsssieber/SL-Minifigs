@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { isFullyAuthedAdmin } from "@/lib/admin";
 import { db } from "@/lib/db";
 import { toCsv } from "@/lib/csv";
 import { decimalToNumber } from "@/lib/utils";
@@ -8,8 +8,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const session = await auth();
-  if (!session?.user?.isAdmin) return new NextResponse("Forbidden", { status: 403 });
+  if (!(await isFullyAuthedAdmin())) return new NextResponse("Forbidden", { status: 403 });
 
   const orders = await db.order.findMany({
     orderBy: { createdAt: "desc" },

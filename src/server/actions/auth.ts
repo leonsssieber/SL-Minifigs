@@ -1,12 +1,13 @@
 "use server";
 
 import bcrypt from "bcryptjs";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { db } from "@/lib/db";
 import { signIn, signOut } from "@/lib/auth";
 import { registerSchema, loginSchema, passwordResetRequestSchema, passwordResetSchema } from "@/lib/validation";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { sendEmail, passwordResetEmail, verifyEmailEmail } from "@/lib/email";
+import { TWO_FA_COOKIE_NAME } from "@/lib/two-factor-cookie";
 import crypto from "node:crypto";
 
 export type ActionResult<T = unknown> = { ok: true; data?: T } | { ok: false; error: string; fieldErrors?: Record<string, string[]> };
@@ -103,6 +104,9 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ is
 }
 
 export async function logoutAction() {
+  // 2FA-Cookie löschen, damit beim nächsten Admin-Login wieder ein frischer Code nötig ist.
+  const jar = await cookies();
+  jar.delete(TWO_FA_COOKIE_NAME);
   await signOut({ redirectTo: "/" });
 }
 

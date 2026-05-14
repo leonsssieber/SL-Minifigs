@@ -3,7 +3,7 @@
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
-import { requireAdmin } from "@/lib/admin";
+import { requireAdminSession } from "@/lib/admin";
 import { createEmailCode, verifyEmailCode, EMAIL_2FA_CODE_TTL_MINUTES } from "@/lib/email-2fa";
 import { sendEmail, adminTwoFactorCodeEmail } from "@/lib/email";
 import { sign2faCookie, TWO_FA_COOKIE_NAME } from "@/lib/two-factor-cookie";
@@ -11,8 +11,9 @@ import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import type { ActionResult } from "./auth";
 
 // Sendet einen 2FA-Code an die Admin-E-Mail-Adresse.
+// Verwendet requireAdminSession (kein 2FA-Cookie nötig), weil DIESE Action ja den Cookie erst setzt.
 export async function sendAdmin2faCode(): Promise<ActionResult<{ sent: true; ttlMinutes: number }>> {
-  const user = await requireAdmin();
+  const user = await requireAdminSession();
 
   const ip = getClientIp(await headers());
   const rl = await rateLimit(`2fa-send:${user.id}:${ip}`, 5, 60);
@@ -46,7 +47,7 @@ export async function sendAdmin2faCode(): Promise<ActionResult<{ sent: true; ttl
 }
 
 export async function verifyAdmin2faCode(formData: FormData): Promise<ActionResult> {
-  const user = await requireAdmin();
+  const user = await requireAdminSession();
   const code = String(formData.get("code") ?? "").trim();
 
   const ip = getClientIp(await headers());
@@ -79,7 +80,7 @@ export async function verifyAdmin2faCode(formData: FormData): Promise<ActionResu
 
 // Manuelles Logout aus dem 2FA-Zustand (z.B. um sich auf einem fremden Gerät abzumelden).
 export async function clearAdmin2faCookie(): Promise<ActionResult> {
-  await requireAdmin();
+  await requireAdminSession();
   const jar = await cookies();
   jar.delete(TWO_FA_COOKIE_NAME);
   return { ok: true };

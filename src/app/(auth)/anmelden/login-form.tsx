@@ -19,11 +19,12 @@ export function LoginForm({ callbackUrl }: { callbackUrl: string }) {
     const result = await loginAction(fd);
     setPending(false);
     if (result.ok) {
-      toast.success("Erfolgreich angemeldet");
-      // Admins müssen erst 2FA-Code per E-Mail bestätigen, bevor sie irgendwo hin kommen.
+      // Admins müssen erst 2FA-Code per E-Mail bestätigen, bevor sie wirklich "angemeldet" sind.
       if (result.data?.isAdmin) {
+        toast.success("Passwort korrekt. Bitte 2FA-Code per E-Mail bestätigen.");
         router.push("/admin/2fa");
       } else {
+        toast.success("Erfolgreich angemeldet");
         router.push(callbackUrl);
       }
       router.refresh();

@@ -5,6 +5,7 @@
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { isFullyAuthedAdmin } from "@/lib/admin";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
@@ -44,16 +45,16 @@ export async function POST(request: Request): Promise<NextResponse> {
         const endpoint = payload.endpoint ?? "ankaufImage";
 
         if (endpoint === "productImage") {
-          // Nur Admin darf Produktbilder hochladen
-          const session = await auth();
-          if (!session?.user || !session.user.isAdmin) {
+          // Nur voll-authentifizierter Admin (mit 2FA) darf Produktbilder hochladen
+          if (!(await isFullyAuthedAdmin())) {
             throw new Error("Nicht autorisiert");
           }
+          const session = await auth();
           return {
             allowedContentTypes: ALLOWED_TYPES,
             maximumSizeInBytes: 4 * 1024 * 1024, // 4 MB
             addRandomSuffix: true,
-            tokenPayload: JSON.stringify({ endpoint, userId: session.user.id }),
+            tokenPayload: JSON.stringify({ endpoint, userId: session?.user?.id }),
           };
         }
 
