@@ -5,12 +5,13 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { sendAdmin2faCode, verifyAdmin2faCode } from "@/server/actions/two-factor";
+import { logoutAction } from "@/server/actions/auth";
 import { verify2faCookie, TWO_FA_COOKIE_NAME } from "@/lib/two-factor-cookie";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { ShieldCheck } from "lucide-react";
+import { ShieldCheck, LogOut } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "2FA-Verifikation", robots: { index: false } };
@@ -116,6 +117,12 @@ export default async function TwoFaVerifyPage({
           <form action={handleSend}>
             <Button type="submit" variant="ghost" size="sm" className="w-full">
               Neuen Code senden
+            </Button>
+          </form>
+          <form action={logoutAction}>
+            <Button type="submit" variant="ghost" size="sm" className="w-full gap-2 text-muted-foreground">
+              <LogOut className="h-3.5 w-3.5" />
+              Abbrechen & abmelden
             </Button>
           </form>
         </CardContent>
