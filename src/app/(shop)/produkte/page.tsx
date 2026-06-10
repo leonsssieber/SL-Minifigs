@@ -69,61 +69,52 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
   ]);
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
+  const selectClass =
+    "h-10 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
+
   return (
-    <div className="container py-8">
+    <div className="container py-10">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">
+        <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight mb-1.5">
           {categorySlug ? categories.find((c) => c.slug === categorySlug)?.name ?? "Produkte" : "Alle Produkte"}
         </h1>
-        <p className="text-muted-foreground">{totalCount} Produkte</p>
+        <p className="text-sm text-muted-foreground">{totalCount} Produkte</p>
       </div>
 
-      <form className="mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+      <form className="mb-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
         <Input name="q" placeholder="Suchen..." defaultValue={q} />
-        <select
-          name="cat"
-          defaultValue={categorySlug ?? ""}
-          className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-        >
+        <select name="cat" defaultValue={categorySlug ?? ""} className={selectClass}>
           <option value="">Alle Kategorien</option>
           {categories.map((c) => (
             <option key={c.id} value={c.slug}>{c.name}</option>
           ))}
         </select>
-        <select
-          name="cond"
-          defaultValue={condition ?? ""}
-          className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-        >
+        <select name="cond" defaultValue={condition ?? ""} className={selectClass}>
           <option value="">Alle Zustände</option>
           {["NEU", "WIE_NEU", "GEBRAUCHT_GUT", "GEBRAUCHT_FAIR"].map((c) => (
             <option key={c} value={c}>{conditionLabel(c)}</option>
           ))}
         </select>
-        <select
-          name="sort"
-          defaultValue={sort}
-          className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-        >
+        <select name="sort" defaultValue={sort} className={selectClass}>
           <option value="newest">Neueste</option>
           <option value="price-asc">Preis aufsteigend</option>
           <option value="price-desc">Preis absteigend</option>
           <option value="name">Name A-Z</option>
         </select>
-        <Button type="submit">Anwenden</Button>
+        <Button type="submit" variant="outline">Anwenden</Button>
       </form>
 
       {products.length === 0 ? (
-        <div className="rounded-xl border border-dashed py-16 text-center text-muted-foreground">
+        <div className="rounded-lg border border-dashed py-16 text-center text-muted-foreground">
           Keine Produkte gefunden.
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
             {products.map((p) => <ProductCard key={p.id} product={p} />)}
           </div>
           {totalPages > 1 && (
-            <div className="mt-8 flex justify-center gap-2">
+            <div className="mt-10 flex justify-center gap-1.5">
               {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => {
                 const params = new URLSearchParams();
                 if (q) params.set("q", q);
@@ -137,7 +128,11 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                   <Link
                     key={p}
                     href={`/produkte?${params.toString()}`}
-                    className={`px-3 py-2 rounded-md text-sm ${p === page ? "bg-primary text-primary-foreground" : "border hover:bg-muted"}`}
+                    className={`h-9 min-w-9 px-2 grid place-items-center rounded-md text-sm font-medium transition-colors ${
+                      p === page
+                        ? "bg-foreground text-background"
+                        : "border text-muted-foreground hover:text-foreground hover:bg-muted"
+                    }`}
                   >{p}</Link>
                 );
               })}

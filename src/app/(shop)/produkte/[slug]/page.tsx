@@ -90,16 +90,15 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                   </Badge>
                 </a>
               )}
-              {product.featured && <Badge variant="warning">★ Featured</Badge>}
             </div>
-            <h1 className="text-2xl sm:text-3xl font-bold leading-tight break-words">{product.name}</h1>
+            <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight leading-tight break-words">{product.name}</h1>
             {product.shortDescription && (
               <p className="text-muted-foreground">{product.shortDescription}</p>
             )}
           </div>
 
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            <span className="text-2xl sm:text-3xl font-bold whitespace-nowrap">{formatCHF(price)}</span>
+            <span className="text-2xl sm:text-3xl font-semibold tracking-tight whitespace-nowrap">{formatCHF(price)}</span>
             {comparePrice && comparePrice > price && (
               <>
                 <span className="text-base sm:text-lg text-muted-foreground line-through whitespace-nowrap">{formatCHF(comparePrice)}</span>
@@ -117,12 +116,11 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
               </div>
             ) : (
               <>
-                <div className="text-sm">
-                  {product.stockType === "UNIQUE" ? (
-                    <span className="text-green-700 font-medium">✓ Verfügbar (Unikat)</span>
-                  ) : (
-                    <span className="text-green-700 font-medium">✓ {product.stockQuantity} Stück verfügbar</span>
-                  )}
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500" aria-hidden />
+                  {product.stockType === "UNIQUE"
+                    ? "Verfügbar (Unikat)"
+                    : `${product.stockQuantity} Stück verfügbar`}
                 </div>
                 <div className="flex gap-2">
                   <AddToCartButton
@@ -156,7 +154,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
           <Separator />
 
-          <dl className="text-sm grid grid-cols-2 gap-y-2">
+          <dl className="text-sm grid grid-cols-2 gap-x-4 gap-y-2.5">
             <dt className="text-muted-foreground">Kategorie</dt>
             <dd>{product.category.name}</dd>
             <dt className="text-muted-foreground">Zustand</dt>
@@ -189,9 +187,9 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
       </div>
 
       {related.length > 0 && (
-        <section className="mt-16">
-          <h2 className="text-xl font-bold mb-6">Ähnliche Produkte</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <section className="mt-20">
+          <h2 className="text-xl font-semibold tracking-tight mb-6">Ähnliche Produkte</h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
             {related.map((p) => <ProductCard key={p.id} product={p} />)}
           </div>
         </section>

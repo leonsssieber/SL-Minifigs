@@ -30,28 +30,28 @@ export function Header({ user, shopName }: HeaderProps) {
   ];
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur">
+    <header className="sticky top-0 z-40 w-full border-b bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/80">
       <div className="container flex h-16 items-center justify-between gap-4">
-        <div className="flex items-center gap-2 lg:gap-8">
+        <div className="flex items-center gap-3 lg:gap-10">
           <button
-            className="lg:hidden"
+            className="lg:hidden -ml-1 p-1 text-foreground/80 hover:text-foreground transition-colors"
             onClick={() => setMobileOpen(!mobileOpen)}
             aria-label="Menü"
           >
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
-          <Link href="/" className="flex items-center gap-2 font-bold text-lg">
-            <span className="inline-block h-8 w-8 rounded-md bg-primary text-primary-foreground grid place-items-center text-xs font-black tracking-tight">
+          <Link href="/" className="flex items-center gap-2.5 font-semibold tracking-tight">
+            <span className="inline-block h-8 w-8 rounded-lg bg-primary text-primary-foreground grid place-items-center text-xs font-black tracking-tight">
               SL
             </span>
             <span className="hidden sm:inline">{shopName}</span>
           </Link>
-          <nav className="hidden lg:flex items-center gap-1">
+          <nav className="hidden lg:flex items-center gap-7">
             {nav.map((n) => (
               <Link
                 key={n.href}
                 href={n.href}
-                className="px-3 py-2 text-sm font-medium rounded-md hover:bg-muted transition-colors"
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
               >
                 {n.label}
               </Link>
@@ -106,12 +106,12 @@ export function Header({ user, shopName }: HeaderProps) {
 
       {mobileOpen && (
         <nav className={cn("lg:hidden border-t bg-background")}>
-          <div className="container py-2 flex flex-col">
+          <div className="container py-3 flex flex-col gap-1">
             {nav.map((n) => (
               <Link
                 key={n.href}
                 href={n.href}
-                className="px-3 py-3 text-sm font-medium border-b last:border-0"
+                className="px-3 py-2.5 text-sm font-medium rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                 onClick={() => setMobileOpen(false)}
               >
                 {n.label}
@@ -120,7 +120,7 @@ export function Header({ user, shopName }: HeaderProps) {
             {user?.isAdmin && (
               <Link
                 href="/admin"
-                className="px-3 py-3 text-sm font-medium text-primary"
+                className="px-3 py-2.5 text-sm font-medium rounded-md text-primary hover:bg-muted transition-colors"
                 onClick={() => setMobileOpen(false)}
               >
                 Admin-Bereich

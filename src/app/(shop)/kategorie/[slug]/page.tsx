@@ -25,18 +25,18 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
   if (!category || !category.active) notFound();
 
   return (
-    <div className="container py-8">
+    <div className="container py-10">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">{category.name}</h1>
+        <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight mb-1.5">{category.name}</h1>
         {category.description && <p className="text-muted-foreground">{category.description}</p>}
         <p className="text-sm text-muted-foreground mt-1">{category.products.length} Produkte</p>
       </div>
       {category.products.length === 0 ? (
-        <div className="rounded-xl border border-dashed py-16 text-center text-muted-foreground">
+        <div className="rounded-lg border border-dashed py-16 text-center text-muted-foreground">
           Aktuell keine Produkte in dieser Kategorie.
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
           {category.products.map((p) => <ProductCard key={p.id} product={p} />)}
         </div>
       )}
