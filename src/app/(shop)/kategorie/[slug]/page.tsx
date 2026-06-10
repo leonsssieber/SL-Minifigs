@@ -27,7 +27,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
   return (
     <div className="container py-10">
       <div className="mb-8">
-        <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight mb-1.5">{category.name}</h1>
+        <h1 className="font-display text-3xl sm:text-4xl font-bold uppercase tracking-tight mb-1.5">{category.name}</h1>
         {category.description && <p className="text-muted-foreground">{category.description}</p>}
         <p className="text-sm text-muted-foreground mt-1">{category.products.length} Produkte</p>
       </div>

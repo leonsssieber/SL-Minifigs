@@ -30,7 +30,7 @@ export function Header({ user, shopName }: HeaderProps) {
   ];
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/80">
+    <header className="sticky top-0 z-40 w-full border-b-2 border-foreground bg-background">
       <div className="container flex h-16 items-center justify-between gap-4">
         <div className="flex items-center gap-3 lg:gap-10">
           <button
@@ -40,18 +40,18 @@ export function Header({ user, shopName }: HeaderProps) {
           >
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
-          <Link href="/" className="flex items-center gap-2.5 font-semibold tracking-tight">
-            <span className="inline-block h-8 w-8 rounded-lg bg-primary text-primary-foreground grid place-items-center text-xs font-black tracking-tight">
+          <Link href="/" className="group flex items-center gap-2.5 font-display font-bold tracking-tight text-lg">
+            <span className="relative inline-block h-9 w-9 rounded-md bg-primary text-primary-foreground border-2 border-foreground shadow-brutal-sm grid place-items-center text-xs font-black tracking-tight transition-transform group-hover:-rotate-6">
               SL
             </span>
             <span className="hidden sm:inline">{shopName}</span>
           </Link>
-          <nav className="hidden lg:flex items-center gap-7">
+          <nav className="hidden lg:flex items-center gap-6">
             {nav.map((n) => (
               <Link
                 key={n.href}
                 href={n.href}
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                className="relative text-[13px] font-bold uppercase tracking-wide text-foreground/70 hover:text-foreground transition-colors after:absolute after:-bottom-1 after:left-0 after:h-[3px] after:w-0 after:bg-accent after:transition-all hover:after:w-full"
               >
                 {n.label}
               </Link>
@@ -76,7 +76,7 @@ export function Header({ user, shopName }: HeaderProps) {
             <Button variant="ghost" size="icon" aria-label="Warenkorb">
               <ShoppingCart className="h-5 w-5" />
               {mounted && totalQty > 0 && (
-                <span className="absolute -top-1 -right-1 h-5 min-w-5 px-1 rounded-full bg-primary text-primary-foreground text-[11px] font-bold grid place-items-center">
+                <span className="absolute -top-1 -right-1 h-5 min-w-5 px-1 rounded-full bg-accent text-accent-foreground border-2 border-foreground text-[10px] font-black grid place-items-center">
                   {totalQty}
                 </span>
               )}

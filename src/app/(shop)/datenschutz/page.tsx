@@ -44,8 +44,8 @@ export default async function DatenschutzPage() {
         <p>Wir geben Ihre Daten nur an folgende Dienstleister weiter, soweit für die Vertragserfüllung erforderlich:</p>
         <ul className="list-disc pl-6 space-y-1">
           <li>Bezahldienste: Stripe, PayPal</li>
-          <li>Email-Versand: Resend</li>
-          <li>Bilder-Hosting: UploadThing</li>
+          <li>Hosting &amp; Bilder-Speicherung: Vercel Inc. (USA, Serverstandort EU)</li>
+          <li>E-Mail-Versand: SMTP-Dienstleister (Transaktions-E-Mails wie Bestellbestätigungen)</li>
           <li>Versanddienstleister (Schweizerische Post)</li>
         </ul>
 

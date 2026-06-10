@@ -4,12 +4,13 @@ import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
-import { checkoutSchema } from "@/lib/validation";
+import { checkoutSchema, cartItemsSchema } from "@/lib/validation";
 import { calculateShipping } from "@/lib/shipping";
 import { stripe, isStripeConfigured } from "@/lib/stripe";
 import { createPayPalOrder, isPayPalConfigured } from "@/lib/paypal";
 import { generateOrderNumber, decimalToNumber } from "@/lib/utils";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { cancelPendingOrderAndRestock, releaseExpiredPendingOrders } from "@/lib/order-stock";
 import type { ActionResult } from "@/server/actions/auth";
 
 export interface CartItemForServer {
@@ -102,7 +103,25 @@ export async function placeOrderAction(
   }
   const data = parsed.data;
   if (data.website) return { ok: false, error: "Bestellung nicht möglich." };
-  if (cartItems.length === 0) return { ok: false, error: "Warenkorb ist leer." };
+
+  // Warenkorb-Positionen validieren (Mengen sind Client-Input!)
+  const cartParsed = cartItemsSchema.safeParse(cartItems);
+  if (!cartParsed.success) {
+    return { ok: false, error: "Warenkorb ist ungültig oder leer." };
+  }
+  cartItems = cartParsed.data;
+
+  // Zahlungsanbieter muss konfiguriert sein, BEVOR wir Bestand reservieren.
+  if (data.paymentProvider === "STRIPE" && (!isStripeConfigured() || !stripe)) {
+    return { ok: false, error: "Stripe ist nicht konfiguriert." };
+  }
+  if (data.paymentProvider === "PAYPAL" && !isPayPalConfigured()) {
+    return { ok: false, error: "PayPal ist nicht konfiguriert." };
+  }
+
+  // Verwaiste PENDING-Bestellungen aufräumen, damit blockierter Bestand
+  // wieder verfügbar wird (z.B. PayPal-Abbrüche ohne Rückkehr).
+  await releaseExpiredPendingOrders();
 
   // Lade Produkte + Bestand-Check
   const productIds = cartItems.map((i) => i.productId);
@@ -151,9 +170,24 @@ export async function placeOrderAction(
 
   // Order anlegen (PENDING)
   const orderNumber = generateOrderNumber();
-  const order = await db.$transaction(async (tx) => {
-    const o = await tx.order.create({
-      data: {
+  let order;
+  try {
+    order = await db.$transaction(async (tx) => {
+      // Bestand atomar reservieren: Das Decrement passiert nur, wenn noch
+      // genug Bestand da ist (Guard in der WHERE-Klausel). Damit können
+      // zwei gleichzeitige Checkouts dasselbe Unikat nicht doppelt kaufen.
+      for (const it of cartItems) {
+        const res = await tx.product.updateMany({
+          where: { id: it.productId, active: true, stockQuantity: { gte: it.quantity } },
+          data: { stockQuantity: { decrement: it.quantity } },
+        });
+        if (res.count === 0) {
+          const p = products.find((x) => x.id === it.productId);
+          throw new Error(`OUT_OF_STOCK:${p?.name ?? "Produkt"}`);
+        }
+      }
+      return tx.order.create({
+        data: {
         orderNumber,
         userId: session?.user?.id ?? null,
         guestEmail: session?.user ? null : data.email.toLowerCase(),
@@ -192,73 +226,72 @@ export async function placeOrderAction(
           }),
         },
       },
-    });
-    // Bestand reservieren (sofort runterzählen — bei Cancel später wieder hochzählen)
-    for (const it of cartItems) {
-      await tx.product.update({
-        where: { id: it.productId },
-        data: { stockQuantity: { decrement: it.quantity } },
       });
+    });
+  } catch (err) {
+    if (err instanceof Error && err.message.startsWith("OUT_OF_STOCK:")) {
+      const name = err.message.slice("OUT_OF_STOCK:".length);
+      return { ok: false, error: `„${name}" ist nicht mehr in dieser Menge verfügbar.` };
     }
-    return o;
-  });
+    console.error("[checkout] Bestellung anlegen fehlgeschlagen:", err);
+    return { ok: false, error: "Bestellung konnte nicht angelegt werden. Bitte erneut versuchen." };
+  }
 
   const baseUrl = process.env.NEXT_PUBLIC_SHOP_URL ?? "http://localhost:3000";
 
-  // Stripe
-  if (data.paymentProvider === "STRIPE") {
-    if (!isStripeConfigured() || !stripe) {
-      return { ok: false, error: "Stripe ist nicht konfiguriert." };
-    }
-    const stripeSession = await stripe.checkout.sessions.create({
-      mode: "payment",
-      payment_method_types: ["card"],
-      customer_email: data.email,
-      line_items: [
-        ...cartItems.map((it) => {
-          const p = products.find((x) => x.id === it.productId)!;
-          return {
-            quantity: it.quantity,
+  // Ab hier ist Bestand reserviert. Schlägt die Zahlungs-API fehl, wird die
+  // Bestellung sofort storniert und der Bestand zurückgegeben.
+  try {
+    // Stripe
+    if (data.paymentProvider === "STRIPE") {
+      const stripeSession = await stripe!.checkout.sessions.create({
+        mode: "payment",
+        payment_method_types: ["card"],
+        customer_email: data.email,
+        // Session läuft nach 1h ab → Stripe feuert checkout.session.expired
+        // → Webhook gibt den reservierten Bestand wieder frei.
+        expires_at: Math.floor(Date.now() / 1000) + 60 * 60,
+        line_items: [
+          ...cartItems.map((it) => {
+            const p = products.find((x) => x.id === it.productId)!;
+            return {
+              quantity: it.quantity,
+              price_data: {
+                currency: "chf",
+                unit_amount: Math.round(decimalToNumber(p.price) * 100),
+                product_data: {
+                  name: p.name,
+                  description: p.shortDescription ?? undefined,
+                  images: p.images[0] ? [p.images[0].url] : undefined,
+                },
+              },
+            };
+          }),
+          {
+            quantity: 1,
             price_data: {
               currency: "chf",
-              unit_amount: Math.round(decimalToNumber(p.price) * 100),
-              product_data: {
-                name: p.name,
-                description: p.shortDescription ?? undefined,
-                images: p.images[0] ? [p.images[0].url] : undefined,
-              },
+              unit_amount: Math.round(shippingCost * 100),
+              product_data: { name: `Versand: ${chosenOption.methodName}` },
             },
-          };
-        }),
-        {
-          quantity: 1,
-          price_data: {
-            currency: "chf",
-            unit_amount: Math.round(shippingCost * 100),
-            product_data: { name: `Versand: ${chosenOption.methodName}` },
           },
-        },
-      ],
-      success_url: `${baseUrl}/bestellung/${order.orderNumber}?paid=1`,
-      cancel_url: `${baseUrl}/kasse?cancelled=1`,
-      metadata: { orderId: order.id, orderNumber: order.orderNumber },
-      payment_intent_data: {
+        ],
+        success_url: `${baseUrl}/bestellung/${order.orderNumber}?paid=1`,
+        cancel_url: `${baseUrl}/kasse?cancelled=1`,
         metadata: { orderId: order.id, orderNumber: order.orderNumber },
-      },
-    });
+        payment_intent_data: {
+          metadata: { orderId: order.id, orderNumber: order.orderNumber },
+        },
+      });
 
-    await db.order.update({
-      where: { id: order.id },
-      data: { paymentId: stripeSession.id },
-    });
-    return { ok: true, data: { orderId: order.id, redirectUrl: stripeSession.url ?? undefined } };
-  }
-
-  // PayPal
-  if (data.paymentProvider === "PAYPAL") {
-    if (!isPayPalConfigured()) {
-      return { ok: false, error: "PayPal ist nicht konfiguriert." };
+      await db.order.update({
+        where: { id: order.id },
+        data: { paymentId: stripeSession.id },
+      });
+      return { ok: true, data: { orderId: order.id, redirectUrl: stripeSession.url ?? undefined } };
     }
+
+    // PayPal
     const ppOrder = await createPayPalOrder({
       amount: total,
       currency: "CHF",
@@ -279,9 +312,13 @@ export async function placeOrderAction(
       where: { id: order.id },
       data: { paymentId: ppOrder.id },
     });
+    revalidatePath("/admin/bestellungen");
     return { ok: true, data: { orderId: order.id, redirectUrl: ppOrder.approveUrl, paypalOrderId: ppOrder.id } };
+  } catch (err) {
+    console.error("[checkout] Zahlungs-Session fehlgeschlagen, storniere Bestellung:", err);
+    await cancelPendingOrderAndRestock(order.id).catch((e) =>
+      console.error("[checkout] Rollback fehlgeschlagen:", e)
+    );
+    return { ok: false, error: "Zahlung konnte nicht gestartet werden. Bitte erneut versuchen." };
   }
-
-  revalidatePath("/admin/bestellungen");
-  return { ok: true, data: { orderId: order.id } };
 }

@@ -45,9 +45,15 @@ export async function updateOrder(id: string, formData: FormData): Promise<Actio
     if (newStatus === "COMPLETED" && !order.completedAt) updates.completedAt = new Date();
     if (newStatus === "CANCELLED" && !order.cancelledAt) updates.cancelledAt = new Date();
 
-    // Bei Cancel: Bestand wieder hochzählen
+    // Bei Cancel: Bestand wieder hochzählen. Statuswechsel atomar mit Guard,
+    // damit ein paralleler Webhook-Cancel nicht doppelt zurückbucht.
     if (newStatus === "CANCELLED" && order.status !== "CANCELLED") {
       await db.$transaction(async (tx) => {
+        const res = await tx.order.updateMany({
+          where: { id, status: { not: "CANCELLED" } },
+          data: updates as never,
+        });
+        if (res.count === 0) return; // jemand anderes hat bereits storniert
         for (const item of order.items) {
           if (item.productId) {
             await tx.product.update({
@@ -56,7 +62,6 @@ export async function updateOrder(id: string, formData: FormData): Promise<Actio
             });
           }
         }
-        await tx.order.update({ where: { id }, data: updates });
       });
     } else {
       await db.order.update({ where: { id }, data: updates });

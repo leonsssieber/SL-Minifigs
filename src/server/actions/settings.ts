@@ -25,7 +25,22 @@ export async function saveSettings(formData: FormData) {
   revalidatePath("/impressum");
 }
 
+// Diese Action ist öffentlich aufrufbar — nur explizit freigegebene Keys
+// dürfen gelesen werden, falls später je sensible Werte in den Settings landen.
+const PUBLIC_SETTING_KEYS = new Set([
+  "shop_address",
+  "shop_phone",
+  "shop_email",
+  "shop_uid",
+  "shop_iban",
+  "shop_legal_entity",
+  "shop_legal_owner",
+  "shop_legal_register",
+]);
+
 export async function getSettings(keys: string[]): Promise<Record<string, string>> {
-  const settings = await db.siteSetting.findMany({ where: { key: { in: keys } } });
+  const allowed = keys.filter((k) => PUBLIC_SETTING_KEYS.has(k));
+  if (allowed.length === 0) return {};
+  const settings = await db.siteSetting.findMany({ where: { key: { in: allowed } } });
   return Object.fromEntries(settings.map((s) => [s.key, s.value]));
 }

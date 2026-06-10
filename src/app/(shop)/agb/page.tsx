@@ -12,11 +12,6 @@ export default async function AgbPage() {
     <div className="container py-12 max-w-2xl">
       <h1 className="text-3xl font-bold mb-6">Allgemeine Geschäftsbedingungen</h1>
       <div className="prose prose-sm max-w-none space-y-4">
-        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md p-3">
-          <strong>Hinweis:</strong> Dies ist ein Template. Bitte unbedingt von einer Fachperson prüfen
-          lassen, bevor der Shop live geht — insbesondere für gewerblichen Verkauf in der Schweiz.
-        </p>
-
         <h2 className="text-xl font-bold mt-6">1. Geltungsbereich</h2>
         <p>
           Diese AGB regeln das Vertragsverhältnis zwischen {s.shop_legal_entity || shopName}
@@ -69,7 +64,12 @@ export default async function AgbPage() {
 
         <h2 className="text-xl font-bold mt-6">10. Kontakt</h2>
         <p>
-          Bei Fragen erreichen Sie uns unter {s.shop_email || "(Email noch zu hinterlegen)"}.
+          Bei Fragen erreichen Sie uns{" "}
+          {s.shop_email ? (
+            <>unter {s.shop_email}</>
+          ) : (
+            <>über das <a href="/kontakt" className="underline">Kontaktformular</a></>
+          )}.
         </p>
 
         <p className="text-xs text-muted-foreground mt-8">

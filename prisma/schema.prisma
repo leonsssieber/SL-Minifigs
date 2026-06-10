@@ -274,8 +274,8 @@ model Order {
   customerNotes String?
   adminNotes    String?
 
-  // Tracking-Token für öffentliche Tracking-Seite
-  publicToken String @unique @default(cuid())
+  // Tracking-Token für öffentliche Tracking-Seite (cuid2: nicht erratbar)
+  publicToken String @unique @default(cuid(2))
 
   createdAt   DateTime  @default(now())
   paidAt      DateTime?
@@ -434,7 +434,7 @@ model WishlistItem {
 
 model AnkaufRequest {
   id           String        @id @default(cuid())
-  publicToken  String        @unique @default(cuid())
+  publicToken  String        @unique @default(cuid(2))
   name         String
   email        String
   phone        String?

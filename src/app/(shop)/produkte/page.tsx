@@ -75,7 +75,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
   return (
     <div className="container py-10">
       <div className="mb-8">
-        <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight mb-1.5">
+        <h1 className="font-display text-3xl sm:text-4xl font-bold uppercase tracking-tight mb-1.5">
           {categorySlug ? categories.find((c) => c.slug === categorySlug)?.name ?? "Produkte" : "Alle Produkte"}
         </h1>
         <p className="text-sm text-muted-foreground">{totalCount} Produkte</p>

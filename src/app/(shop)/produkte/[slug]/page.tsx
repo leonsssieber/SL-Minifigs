@@ -10,6 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { formatCHF, conditionLabel, decimalToNumber, bricklinkUrl } from "@/lib/utils";
 import { ExternalLink } from "lucide-react";
 import { ProductCard } from "@/components/shop/product-card";
+import { SectionHeader } from "@/components/shop/section-header";
 import { AddToCartButton } from "./add-to-cart-button";
 import { WishlistButton } from "@/components/shop/wishlist-button";
 import { auth } from "@/lib/auth";
@@ -188,8 +189,8 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
       {related.length > 0 && (
         <section className="mt-20">
-          <h2 className="text-xl font-semibold tracking-tight mb-6">Ähnliche Produkte</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
+          <SectionHeader title="Ähnliche Produkte" href={null} />
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 sm:gap-6">
             {related.map((p) => <ProductCard key={p.id} product={p} />)}
           </div>
         </section>

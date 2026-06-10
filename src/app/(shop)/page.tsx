@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { ArrowRight, Package, Shield, Truck } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { db } from "@/lib/db";
 import { ProductCard } from "@/components/shop/product-card";
+import { SectionHeader } from "@/components/shop/section-header";
 
 export const dynamic = "force-dynamic";
 
@@ -36,21 +37,52 @@ export default async function HomePage() {
   return (
     <>
       {/* Hero */}
-      <section className="relative overflow-hidden border-b">
-        <div className="absolute inset-0 studs-pattern [mask-image:linear-gradient(to_bottom,black,transparent)]" aria-hidden />
-        <div className="container relative py-16 sm:py-24 md:py-32">
+      <section className="relative overflow-hidden border-b-2 border-foreground">
+        <div className="absolute inset-0 studs-pattern-strong [mask-image:linear-gradient(105deg,transparent_45%,black_75%)]" aria-hidden />
+        <div className="container relative py-16 sm:py-24 md:py-28">
+          {/* Deko: schwebender 2x2-Stein */}
+          <div
+            className="hidden lg:block absolute right-24 top-16 rotate-12"
+            aria-hidden
+          >
+            <div className="grid grid-cols-2 gap-1.5 rounded-md border-2 border-foreground bg-primary p-2.5 shadow-brutal">
+              {[0, 1, 2, 3].map((i) => (
+                <span key={i} className="h-5 w-5 rounded-full border-2 border-foreground/70 bg-primary brightness-110" />
+              ))}
+            </div>
+          </div>
+          <div
+            className="hidden lg:block absolute right-56 bottom-16 -rotate-6"
+            aria-hidden
+          >
+            <div className="grid grid-cols-2 gap-1.5 rounded-md border-2 border-foreground bg-accent p-2 shadow-brutal-sm">
+              {[0, 1, 2, 3].map((i) => (
+                <span key={i} className="h-4 w-4 rounded-full border-2 border-foreground/60 bg-accent brightness-110" />
+              ))}
+            </div>
+          </div>
+
           <div className="max-w-2xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground mb-6">
-              Schweizer Versand · Geprüfte Qualität
-            </p>
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-balance mb-6 leading-[1.08]">
-              Minifiguren, die Sammler <span className="text-primary">lieben.</span>
+            <span className="inline-block -rotate-1 rounded-md border-2 border-foreground bg-accent px-3 py-1 text-[11px] font-black uppercase tracking-[0.15em] text-accent-foreground shadow-brutal-sm mb-8">
+              Aus der Schweiz · Stück für Stück geprüft
+            </span>
+            <h1 className="font-display text-[2.6rem] leading-[0.95] sm:text-6xl md:text-7xl font-bold tracking-tight text-balance mb-7 uppercase">
+              Minifiguren,
+              <br />
+              die Sammler{" "}
+              <span className="relative inline-block whitespace-nowrap">
+                <span className="relative z-10 px-2">lieben.</span>
+                <span
+                  className="absolute inset-0 -rotate-1 rounded-md border-2 border-foreground bg-accent"
+                  aria-hidden
+                />
+              </span>
             </h1>
             <p className="text-base sm:text-lg text-muted-foreground mb-10 max-w-xl leading-relaxed">
               Handverlesene LEGO® Minifiguren, Sets und Einzelteile aus zweiter Hand —
-              fair bepreist und schnell aus der Schweiz versendet.
+              fair bepreist und schnell verschickt.
             </p>
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-4">
               <Link href="/kategorie/minifiguren">
                 <Button size="lg" className="gap-2">
                   Minifiguren entdecken <ArrowRight className="h-4 w-4" />
@@ -66,56 +98,51 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Trust Badges */}
-      <section className="border-b">
-        <div className="container py-6 grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-4">
-          <div className="flex items-center gap-3">
-            <Shield className="h-5 w-5 text-muted-foreground shrink-0" strokeWidth={1.75} />
-            <div>
-              <div className="font-medium text-sm">Sichere Bezahlung</div>
-              <div className="text-xs text-muted-foreground">Stripe &amp; PayPal — SSL-verschlüsselt</div>
+      {/* Marquee-Band */}
+      <div className="border-b-2 border-foreground bg-accent overflow-hidden" aria-hidden>
+        <div className="flex w-max animate-marquee motion-reduce:animate-none gap-0 py-2.5">
+          {[0, 1].map((copy) => (
+            <div key={copy} className="flex shrink-0 items-center">
+              {[
+                "Geprüfte Qualität",
+                "Versand ab CHF 1.40",
+                "Sichere Bezahlung mit Stripe & PayPal",
+                "Wir kaufen auch dein LEGO an",
+                "Schweizer Lager — schneller Versand",
+                "Jede Figur ein Original",
+              ].map((t) => (
+                <span key={t} className="flex items-center font-display text-sm font-bold uppercase tracking-wider text-accent-foreground">
+                  <span className="mx-6 inline-block h-3 w-3 rounded-sm border-2 border-foreground bg-primary" />
+                  {t}
+                </span>
+              ))}
             </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <Truck className="h-5 w-5 text-muted-foreground shrink-0" strokeWidth={1.75} />
-            <div>
-              <div className="font-medium text-sm">Schweizer Post</div>
-              <div className="text-xs text-muted-foreground">Versand schon ab CHF 1.40 als Brief</div>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <Package className="h-5 w-5 text-muted-foreground shrink-0" strokeWidth={1.75} />
-            <div>
-              <div className="font-medium text-sm">Geprüfte Qualität</div>
-              <div className="text-xs text-muted-foreground">Jedes Teil vor dem Versand kontrolliert</div>
-            </div>
-          </div>
+          ))}
         </div>
-      </section>
+      </div>
 
       {/* Categories */}
       {categories.length > 0 && (
         <section className="container py-16">
-          <div className="flex items-baseline justify-between mb-8">
-            <h2 className="text-xl md:text-2xl font-semibold tracking-tight">Kategorien</h2>
-            <Link
-              href="/produkte"
-              className="group inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Alle ansehen
-              <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-            </Link>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-            {categories.map((c) => (
-              <Link
-                key={c.id}
-                href={`/kategorie/${c.slug}`}
-                className="rounded-lg border bg-card hover:border-foreground/25 transition-colors p-5 text-center"
-              >
-                <div className="font-medium text-sm">{c.name}</div>
-              </Link>
-            ))}
+          <SectionHeader title="Kategorien" />
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            {categories.map((c, i) => {
+              const palette = [
+                "bg-brick-red text-white",
+                "bg-brick-yellow text-foreground",
+                "bg-brick-blue text-white",
+                "bg-brick-green text-white",
+              ];
+              return (
+                <Link
+                  key={c.id}
+                  href={`/kategorie/${c.slug}`}
+                  className={`rounded-lg border-2 border-foreground p-5 text-center font-display font-bold uppercase tracking-wide text-sm shadow-brutal-sm transition-all hover:-translate-y-1 hover:shadow-brutal ${palette[i % palette.length]}`}
+                >
+                  {c.name}
+                </Link>
+              );
+            })}
           </div>
         </section>
       )}
@@ -123,17 +150,8 @@ export default async function HomePage() {
       {/* Featured */}
       {featured.length > 0 && (
         <section className="container py-16">
-          <div className="flex items-baseline justify-between mb-8">
-            <h2 className="text-xl md:text-2xl font-semibold tracking-tight">Highlights</h2>
-            <Link
-              href="/produkte"
-              className="group inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Alle ansehen
-              <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-            </Link>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
+          <SectionHeader title="Highlights" />
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 sm:gap-6">
             {featured.map((p) => (
               <ProductCard key={p.id} product={p} />
             ))}
@@ -143,28 +161,39 @@ export default async function HomePage() {
 
       {/* Newest */}
       <section className="container py-16">
-        <div className="flex items-baseline justify-between mb-8">
-          <h2 className="text-xl md:text-2xl font-semibold tracking-tight">Neu eingetroffen</h2>
-          <Link
-            href="/produkte"
-            className="group inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Alle ansehen
-            <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-          </Link>
-        </div>
+        <SectionHeader title="Neu eingetroffen" />
         {newest.length === 0 ? (
-          <div className="rounded-lg border border-dashed py-16 text-center text-muted-foreground">
-            <p className="font-medium">Noch keine Produkte vorhanden.</p>
-            <p className="text-xs mt-1">Im Admin unter „Produkte" anlegen, um sie hier anzuzeigen.</p>
+          <div className="rounded-lg border-2 border-dashed border-foreground/30 py-16 text-center text-muted-foreground">
+            <p className="font-medium">Bald gibt&apos;s hier Nachschub.</p>
+            <p className="text-xs mt-1">Schau in Kürze wieder vorbei — es wird laufend Neues eingestellt.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 sm:gap-6">
             {newest.map((p) => (
               <ProductCard key={p.id} product={p} />
             ))}
           </div>
         )}
+      </section>
+
+      {/* Ankauf-Teaser */}
+      <section className="border-t-2 border-foreground bg-foreground text-background">
+        <div className="container py-14 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+          <div>
+            <h2 className="font-display text-2xl md:text-3xl font-bold uppercase tracking-tight mb-2">
+              Kisten voller LEGO im Keller?
+            </h2>
+            <p className="text-background/70 max-w-xl">
+              Wir kaufen deine Minifiguren, Sets und Konvolute — fair bewertet,
+              unkompliziert abgewickelt, Auszahlung nach Prüfung.
+            </p>
+          </div>
+          <Link href="/ankauf" className="shrink-0">
+            <Button size="lg" variant="accent" className="gap-2 border-background shadow-[4px_4px_0_0_hsl(var(--background))] hover:shadow-[2px_2px_0_0_hsl(var(--background))]">
+              Jetzt verkaufen <ArrowRight className="h-4 w-4" />
+            </Button>
+          </Link>
+        </div>
       </section>
     </>
   );

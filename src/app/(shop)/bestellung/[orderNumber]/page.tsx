@@ -33,13 +33,26 @@ export default async function OrderTrackingPage({
   const shipping = decimalToNumber(order.shippingCost);
   const total = decimalToNumber(order.total);
 
+  // Dank-Banner nur zeigen, wenn die Zahlung tatsächlich bestätigt ist —
+  // nicht bloss weil ?paid=1 in der URL steht.
+  const isActuallyPaid = ["PAID", "PROCESSING", "SHIPPED", "COMPLETED"].includes(order.status);
+
   return (
     <div className="container py-12 max-w-2xl">
-      {sp.paid && (
+      {sp.paid && isActuallyPaid && (
         <div className="mb-6 rounded-xl bg-green-50 border border-green-200 p-6 text-center">
           <CheckCircle2 className="h-12 w-12 text-green-600 mx-auto mb-2" />
           <h1 className="text-2xl font-bold text-green-900">Vielen Dank!</h1>
           <p className="text-green-800 text-sm mt-1">Deine Bestellung ist eingegangen.</p>
+        </div>
+      )}
+      {sp.paid && !isActuallyPaid && order.status === "PENDING" && (
+        <div className="mb-6 rounded-xl bg-amber-50 border border-amber-200 p-6 text-center">
+          <h1 className="text-xl font-bold text-amber-900">Zahlung wird bestätigt…</h1>
+          <p className="text-amber-800 text-sm mt-1">
+            Das dauert in der Regel nur wenige Sekunden. Lade die Seite gleich neu —
+            du erhältst zusätzlich eine Bestätigung per E-Mail.
+          </p>
         </div>
       )}
 

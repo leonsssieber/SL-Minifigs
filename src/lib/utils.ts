@@ -49,9 +49,18 @@ export function slugify(input: string): string {
 }
 
 export function generateOrderNumber(): string {
-  const year = new Date().getFullYear();
-  const random = Math.floor(Math.random() * 100000).toString().padStart(5, "0");
-  return `LR-${year}-${random}`;
+  // Kryptografisch zufällig & lang genug, dass Bestellnummern nicht erratbar
+  // sind — die Bestellseite ist über die Nummer abrufbar (Capability-URL).
+  // Alphabet ohne 0/O/1/I, 12 Zeichen ≈ 2^59 Möglichkeiten.
+  const alphabet = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+  const bytes = new Uint8Array(12);
+  crypto.getRandomValues(bytes);
+  let s = "";
+  for (let i = 0; i < bytes.length; i++) {
+    s += alphabet[bytes[i] % alphabet.length];
+    if (i === 3 || i === 7) s += "-";
+  }
+  return `LR-${s}`;
 }
 
 export function conditionLabel(condition: string): string {

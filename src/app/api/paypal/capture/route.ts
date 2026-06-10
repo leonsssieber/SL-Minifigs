@@ -24,12 +24,35 @@ export async function GET(req: Request) {
   if (order.paymentId !== token) {
     return NextResponse.redirect(new URL("/kasse?error=mismatch", req.url));
   }
+  // Bereits bezahlt (z.B. doppelter Redirect/Reload)? Einfach zur Bestellseite.
+  if (order.status === "PAID" || order.status === "PROCESSING" || order.status === "SHIPPED" || order.status === "COMPLETED") {
+    return NextResponse.redirect(new URL(`/bestellung/${order.orderNumber}?paid=1`, req.url));
+  }
+  // Nur PENDING-Bestellungen dürfen captured werden — eine bereits stornierte
+  // Bestellung (z.B. durch Cleanup) darf den Kunden nicht mehr belasten.
+  if (order.status !== "PENDING") {
+    return NextResponse.redirect(new URL("/kasse?error=expired", req.url));
+  }
 
   try {
     const result = await capturePayPalOrder(token);
     if (result.status === "COMPLETED") {
-      await db.order.update({
-        where: { id: orderId },
+      // Betrag gegen die server-seitig berechnete Bestellsumme prüfen.
+      const expected = decimalToNumber(order.total).toFixed(2);
+      if (result.capturedAmount !== expected || result.capturedCurrency !== order.currency) {
+        console.error(
+          `[paypal capture] BETRAGS-MISMATCH bei Order ${order.orderNumber}: erwartet ${expected} ${order.currency}, erhalten ${result.capturedAmount} ${result.capturedCurrency}. Manuell prüfen!`
+        );
+        await db.order.update({
+          where: { id: orderId },
+          data: { adminNotes: `⚠ PayPal-Zahlbetrag weicht ab (erhalten: ${result.capturedAmount} ${result.capturedCurrency}). Manuell prüfen!` },
+        });
+        return NextResponse.redirect(new URL("/kasse?error=capture", req.url));
+      }
+
+      // Idempotent: Nur aus PENDING heraus auf PAID wechseln.
+      const updated = await db.order.updateMany({
+        where: { id: orderId, status: "PENDING" },
         data: {
           status: "PAID",
           paymentStatus: "PAID",
@@ -37,11 +60,15 @@ export async function GET(req: Request) {
           paymentId: result.captureId ?? token,
         },
       });
+      if (updated.count === 0) {
+        return NextResponse.redirect(new URL(`/bestellung/${order.orderNumber}?paid=1`, req.url));
+      }
 
       const recipientEmail = order.guestEmail ??
         (await db.user.findUnique({ where: { id: order.userId ?? "" }, select: { email: true } }))?.email;
 
       if (recipientEmail) {
+        try {
         await sendEmail({
           to: recipientEmail,
           subject: `Bestellbestätigung ${order.orderNumber}`,
@@ -66,6 +93,9 @@ export async function GET(req: Request) {
             ].filter(Boolean).join("\n"),
           }),
         });
+        } catch (emailErr) {
+          console.error(`[paypal capture] Bestellbestätigung für ${order.orderNumber} konnte nicht gesendet werden:`, emailErr);
+        }
       }
       return NextResponse.redirect(new URL(`/bestellung/${order.orderNumber}?paid=1`, req.url));
     }

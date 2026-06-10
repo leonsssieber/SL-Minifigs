@@ -16,7 +16,7 @@
     --secondary-foreground: 222 47% 11%;
     --muted: 210 40% 96%;
     --muted-foreground: 215 16% 47%;
-    --accent: 210 40% 96%;
+    --accent: 50 100% 50%;        /* Lego-Gelb — bewusst & sparsam einsetzen */
     --accent-foreground: 222 47% 11%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
@@ -73,10 +73,20 @@
   .text-balance {
     text-wrap: balance;
   }
-  /* Subtle "studs" pattern evoking LEGO bricks. Used decoratively in the hero. */
+  /* "Studs" pattern evoking LEGO bricks. Used decoratively in the hero. */
   .studs-pattern {
     background-image:
-      radial-gradient(circle at center, hsl(var(--foreground) / 0.06) 1.5px, transparent 2px);
-    background-size: 24px 24px;
+      radial-gradient(circle at center, hsl(var(--foreground) / 0.08) 2px, transparent 2.5px);
+    background-size: 26px 26px;
+  }
+  .studs-pattern-strong {
+    background-image:
+      radial-gradient(circle at center, hsl(var(--foreground) / 0.16) 2.5px, transparent 3px);
+    background-size: 26px 26px;
+  }
+  /* Text mit Outline — für grosse Display-Headlines */
+  .text-outline {
+    -webkit-text-stroke: 2px hsl(var(--foreground));
+    color: transparent;
   }
 }

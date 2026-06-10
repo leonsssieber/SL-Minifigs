@@ -150,6 +150,23 @@ export type AddressInput = z.infer<typeof addressSchema>;
 // CHECKOUT
 // ============================================================
 
+// Warenkorb-Positionen kommen vom Client und sind NICHT vertrauenswürdig:
+// Menge muss eine positive Ganzzahl sein (negative Mengen würden Bestand
+// erhöhen und Totale senken), Duplikate sind nicht erlaubt.
+export const cartItemsSchema = z
+  .array(
+    z.object({
+      productId: z.string().min(1).max(64),
+      quantity: z.number().int().min(1).max(99),
+    })
+  )
+  .min(1)
+  .max(50)
+  .refine(
+    (items) => new Set(items.map((i) => i.productId)).size === items.length,
+    "Doppelte Produkte im Warenkorb."
+  );
+
 export const checkoutSchema = z.object({
   email: z.string().email().max(255),
   shippingFirstName: z.string().min(1).max(100),

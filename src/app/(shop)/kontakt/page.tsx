@@ -10,7 +10,7 @@ export default async function ContactPage() {
 
   return (
     <div className="container py-12 max-w-2xl">
-      <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight mb-2">Kontakt</h1>
+      <h1 className="font-display text-3xl sm:text-4xl font-bold uppercase tracking-tight mb-2">Kontakt</h1>
       <p className="text-muted-foreground mb-8">
         Schreib uns eine Nachricht — wir melden uns innerhalb von 1–2 Tagen.
       </p>

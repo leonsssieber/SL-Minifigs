@@ -34,7 +34,7 @@ export default function AnkaufPage() {
   return (
     <div className="container py-12 max-w-3xl">
       <div className="mb-10">
-        <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight mb-3">LEGO ankaufen</h1>
+        <h1 className="font-display text-3xl sm:text-4xl font-bold uppercase tracking-tight mb-3">LEGO ankaufen</h1>
         <p className="text-lg text-muted-foreground">
           Wir kaufen deine LEGO-Minifiguren, Sets und Zubehör — fair bewertet, schnell abgewickelt.
         </p>

@@ -2,9 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { del } from "@vercel/blob";
 import { db } from "@/lib/db";
 import { requireAdmin, logAudit } from "@/lib/admin";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { sendEmail } from "@/lib/email";
 import {
   ankaufSubmitSchema,
@@ -34,6 +36,14 @@ export async function submitAnkaufRequest(data: {
   images: { url: string; key: string }[];
   website?: string;
 }): Promise<ActionResult<{ publicToken: string }>> {
+  // Rate-Limit: Die Aktion erstellt DB-Zeilen und versendet E-Mails an eine
+  // frei wählbare Adresse — ohne Limit ein Spam-/Mailbomben-Vektor.
+  const ip = getClientIp(await headers());
+  const rl = await rateLimit(`ankauf:${ip}`, 5, 3600);
+  if (!rl.success) {
+    return { ok: false, error: "Zu viele Anfragen. Bitte später erneut versuchen." };
+  }
+
   const parsed = ankaufSubmitSchema.safeParse(data);
   if (!parsed.success) {
     return {

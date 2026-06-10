@@ -6,6 +6,7 @@ import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { isFullyAuthedAdmin } from "@/lib/admin";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
@@ -59,7 +60,13 @@ export async function POST(request: Request): Promise<NextResponse> {
         }
 
         if (endpoint === "ankaufImage") {
-          // Öffentlich (auch Gäste), aber strenger Filter
+          // Öffentlich (auch Gäste), aber strenger Filter + Rate-Limit,
+          // damit niemand den Blob-Speicher vollmüllen kann.
+          const ip = getClientIp(request.headers);
+          const rl = await rateLimit(`blob-upload:${ip}`, 30, 3600);
+          if (!rl.success) {
+            throw new Error("Zu viele Uploads. Bitte später erneut versuchen.");
+          }
           return {
             allowedContentTypes: ALLOWED_TYPES,
             maximumSizeInBytes: 8 * 1024 * 1024, // 8 MB

@@ -15,7 +15,7 @@ export default async function CheckoutPage({
 
   return (
     <div className="container py-10">
-      <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight mb-6">Kasse</h1>
+      <h1 className="font-display text-3xl sm:text-4xl font-bold uppercase tracking-tight mb-6">Kasse</h1>
       {sp.cancelled && (
         <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
           Bezahlung abgebrochen — du kannst es erneut versuchen.

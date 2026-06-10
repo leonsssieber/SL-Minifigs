@@ -32,8 +32,13 @@ export default async function WiderrufPage() {
 
         <h2 className="text-xl font-bold mt-6">Rücksendung</h2>
         <p>
-          Bitte kontaktiere uns vor der Rücksendung unter {s.shop_email || "(Email)"}, damit wir
-          dir die Rücksendeadresse zukommen lassen können.
+          Bitte kontaktiere uns vor der Rücksendung{" "}
+          {s.shop_email ? (
+            <>unter {s.shop_email}</>
+          ) : (
+            <>über das <a href="/kontakt" className="underline">Kontaktformular</a></>
+          )}
+          , damit wir dir die Rücksendeadresse zukommen lassen können.
         </p>
 
         <h2 className="text-xl font-bold mt-6">Rückerstattung</h2>
