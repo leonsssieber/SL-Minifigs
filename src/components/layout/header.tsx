@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ShoppingCart, User, Menu, X, Search, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Logo } from "@/components/layout/logo";
 import { useCart } from "@/lib/cart-store";
 import { cn } from "@/lib/utils";
 
@@ -41,9 +42,7 @@ export function Header({ user, shopName }: HeaderProps) {
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
           <Link href="/" className="group flex items-center gap-2.5 font-display font-bold tracking-tight text-lg">
-            <span className="relative inline-block h-9 w-9 rounded-md bg-primary text-primary-foreground border-2 border-foreground shadow-brutal-sm grid place-items-center text-xs font-black tracking-tight transition-transform group-hover:-rotate-6">
-              SL
-            </span>
+            <Logo className="transition-transform group-hover:-rotate-6" />
             <span className="hidden sm:inline">{shopName}</span>
           </Link>
           <nav className="hidden lg:flex items-center gap-6">

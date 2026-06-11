@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Logo } from "@/components/layout/logo";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   const shopName = process.env.NEXT_PUBLIC_SHOP_NAME ?? "SL Minifigs";
@@ -6,8 +7,8 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
     <div className="min-h-screen flex flex-col">
       <header className="border-b bg-background">
         <div className="container h-16 flex items-center">
-          <Link href="/" className="flex items-center gap-2.5 font-semibold tracking-tight">
-            <span className="inline-block h-8 w-8 rounded-lg bg-primary text-primary-foreground grid place-items-center text-xs font-black tracking-tight">SL</span>
+          <Link href="/" className="group flex items-center gap-2.5 font-display font-bold tracking-tight">
+            <Logo className="transition-transform group-hover:-rotate-6" />
             <span>{shopName}</span>
           </Link>
         </div>

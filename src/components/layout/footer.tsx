@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Logo } from "@/components/layout/logo";
 
 export function Footer({ shopName }: { shopName: string }) {
   return (
@@ -14,7 +15,7 @@ export function Footer({ shopName }: { shopName: string }) {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-10">
           <div className="col-span-2 md:col-span-1">
             <div className="flex items-center gap-2.5 font-display font-bold tracking-tight mb-4">
-              <span className="inline-block h-8 w-8 rounded-md bg-primary text-primary-foreground border-2 border-background grid place-items-center text-[10px] font-black tracking-tight">SL</span>
+              <Logo size="sm" onDark />
               <h3 className="text-lg">{shopName}</h3>
             </div>
             <p className="text-sm text-background/60 leading-relaxed">

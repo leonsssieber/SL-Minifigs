@@ -17,6 +17,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Logo } from "@/components/layout/logo";
 import { logoutAction } from "@/server/actions/auth";
 
 const items = [
@@ -36,8 +37,8 @@ export function AdminSidebar({ shopName }: { shopName: string }) {
   const pathname = usePathname();
   return (
     <aside className="w-64 border-r bg-muted/20 flex flex-col">
-      <div className="h-16 border-b px-6 flex items-center font-bold gap-2">
-        <span className="inline-block h-8 w-8 rounded-md bg-primary text-primary-foreground grid place-items-center text-xs font-black tracking-tight">SL</span>
+      <div className="h-16 border-b px-6 flex items-center font-bold gap-2.5">
+        <Logo size="sm" />
         <span className="truncate">{shopName}</span>
       </div>
       <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
