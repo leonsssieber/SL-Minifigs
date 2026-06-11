@@ -39,7 +39,12 @@ export async function sendAdmin2faCode(): Promise<ActionResult<{ sent: true; ttl
   });
 
   if (!result.ok) {
-    // SMTP nicht konfiguriert → in der Dev-Konsole sichtbar, damit Setup weitergeht.
+    if (process.env.NODE_ENV === "production") {
+      // NIEMALS den Code in Produktions-Logs schreiben (Log-Drains!).
+      console.error(`[admin 2fa] E-Mail-Versand fehlgeschlagen für ${dbUser.email} — SMTP prüfen.`);
+      return { ok: false, error: "Code konnte nicht gesendet werden. Bitte später erneut versuchen." };
+    }
+    // Nur lokal: Code in der Dev-Konsole anzeigen, damit das Setup ohne SMTP weitergeht.
     console.warn(`[admin 2fa] Code für ${dbUser.email}: ${code}`);
   }
 

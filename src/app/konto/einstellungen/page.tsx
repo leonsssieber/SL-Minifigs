@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { logoutAction } from "@/server/actions/auth";
+import { PasswordForm } from "./password-form";
 
 export default async function AccountSettingsPage() {
   const session = await auth();
@@ -28,6 +29,13 @@ export default async function AccountSettingsPage() {
           <p className="text-xs text-muted-foreground">
             Zum Ändern deiner Daten kontaktiere uns bitte.
           </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle>Passwort ändern</CardTitle></CardHeader>
+        <CardContent>
+          <PasswordForm />
         </CardContent>
       </Card>
 

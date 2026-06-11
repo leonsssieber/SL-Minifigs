@@ -40,6 +40,17 @@ export const passwordResetSchema = z.object({
     .regex(/[0-9]/, "Mindestens eine Zahl"),
 });
 
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Aktuelles Passwort erforderlich"),
+  newPassword: z
+    .string()
+    .min(8, "Mindestens 8 Zeichen")
+    .max(100)
+    .regex(/[a-z]/, "Mindestens ein Kleinbuchstabe")
+    .regex(/[A-Z]/, "Mindestens ein Grossbuchstabe")
+    .regex(/[0-9]/, "Mindestens eine Zahl"),
+});
+
 // ============================================================
 // PRODUCTS
 // ============================================================

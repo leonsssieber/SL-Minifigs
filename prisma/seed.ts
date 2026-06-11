@@ -1,28 +1,58 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { randomInt } from "crypto";
 
 const db = new PrismaClient();
+
+// Zufälliges Passwort, das die Passwort-Policy erfüllt (Gross-/Kleinbuchstabe, Zahl).
+// Bewusst KEIN fixer Default wie "ChangeMe123!" — bekannte Default-Passwörter
+// auf einem Live-Shop sind ein offenes Scheunentor.
+function generatePassword(): string {
+  const lower = "abcdefghjkmnpqrstuvwxyz";
+  const upper = "ABCDEFGHJKMNPQRSTUVWXYZ";
+  const digits = "23456789";
+  const all = lower + upper + digits;
+  let pw = lower[randomInt(lower.length)] + upper[randomInt(upper.length)] + digits[randomInt(digits.length)];
+  for (let i = 0; i < 13; i++) pw += all[randomInt(all.length)];
+  return pw;
+}
 
 async function main() {
   console.log("🌱 Seeding...");
 
-  // Admin-User (aus ENV oder Default)
+  // Admin-User: Wird NUR angelegt, wenn er noch nicht existiert.
+  // Ein erneuter Seed überschreibt NIEMALS ein bestehendes Passwort —
+  // genau das hat früher Passwörter still auf den Seed-Wert zurückgesetzt.
   const email = (process.env.SEED_ADMIN_EMAIL ?? "slminifigs@gmail.com").toLowerCase();
-  const password = process.env.SEED_ADMIN_PASSWORD ?? "ChangeMe123!";
-  const hashedPassword = await bcrypt.hash(password, 12);
+  const existing = await db.user.findUnique({ where: { email }, select: { id: true, isAdmin: true } });
 
-  await db.user.upsert({
-    where: { email },
-    update: { isAdmin: true, hashedPassword, emailVerified: new Date() },
-    create: {
-      email,
-      hashedPassword,
-      name: "SL Minifigs Admin",
-      isAdmin: true,
-      emailVerified: new Date(),
-    },
-  });
-  console.log(`  ✓ Admin: ${email} / ${password}`);
+  if (existing) {
+    if (!existing.isAdmin) {
+      await db.user.update({ where: { email }, data: { isAdmin: true } });
+      console.log(`  ✓ Admin-Rechte gesetzt für bestehenden User: ${email} (Passwort unverändert)`);
+    } else {
+      console.log(`  ✓ Admin existiert bereits: ${email} (Passwort unverändert)`);
+    }
+  } else {
+    const password = process.env.SEED_ADMIN_PASSWORD ?? generatePassword();
+    const hashedPassword = await bcrypt.hash(password, 12);
+    await db.user.create({
+      data: {
+        email,
+        hashedPassword,
+        name: "SL Minifigs Admin",
+        isAdmin: true,
+        emailVerified: new Date(),
+      },
+    });
+    if (process.env.SEED_ADMIN_PASSWORD) {
+      console.log(`  ✓ Admin erstellt: ${email} (Passwort aus SEED_ADMIN_PASSWORD)`);
+    } else {
+      console.log(`  ✓ Admin erstellt: ${email}`);
+      console.log(`  ⚠ Generiertes Einmal-Passwort: ${password}`);
+      console.log(`    → Nach dem ersten Login sofort unter Konto → Einstellungen ändern!`);
+    }
+  }
 
   // SiteSettings: only set if not already configured (preserves admin edits across re-seeds)
   const settingDefaults: Array<{ key: string; value: string }> = [

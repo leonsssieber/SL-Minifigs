@@ -3,8 +3,8 @@
 import bcrypt from "bcryptjs";
 import { cookies, headers } from "next/headers";
 import { db } from "@/lib/db";
-import { signIn, signOut } from "@/lib/auth";
-import { registerSchema, loginSchema, passwordResetRequestSchema, passwordResetSchema } from "@/lib/validation";
+import { auth, signIn, signOut } from "@/lib/auth";
+import { registerSchema, loginSchema, passwordResetRequestSchema, passwordResetSchema, changePasswordSchema } from "@/lib/validation";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { sendEmail, passwordResetEmail, verifyEmailEmail } from "@/lib/email";
 import { TWO_FA_COOKIE_NAME } from "@/lib/two-factor-cookie";
@@ -172,6 +172,48 @@ export async function resetPasswordAction(formData: FormData): Promise<ActionRes
       data: { usedAt: new Date() },
     }),
   ]);
+
+  return { ok: true };
+}
+
+export async function changePasswordAction(formData: FormData): Promise<ActionResult> {
+  const session = await auth();
+  if (!session?.user) return { ok: false, error: "Nicht angemeldet." };
+
+  // Rate-Limit pro User: bremst das Durchprobieren des aktuellen Passworts.
+  const rl = await rateLimit(`pwchange:${session.user.id}`, 5, 300);
+  if (!rl.success) {
+    return { ok: false, error: `Zu viele Versuche. Bitte in ${rl.resetIn}s erneut.` };
+  }
+
+  const parsed = changePasswordSchema.safeParse({
+    currentPassword: formData.get("currentPassword"),
+    newPassword: formData.get("newPassword"),
+  });
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: "Bitte Eingaben prüfen.",
+      fieldErrors: parsed.error.flatten().fieldErrors as Record<string, string[]>,
+    };
+  }
+
+  const user = await db.user.findUnique({
+    where: { id: session.user.id },
+    select: { hashedPassword: true },
+  });
+  if (!user?.hashedPassword) return { ok: false, error: "Konto hat kein Passwort-Login." };
+
+  const valid = await bcrypt.compare(parsed.data.currentPassword, user.hashedPassword);
+  if (!valid) {
+    return { ok: false, error: "Aktuelles Passwort ist falsch.", fieldErrors: { currentPassword: ["Aktuelles Passwort ist falsch."] } };
+  }
+
+  const hashedPassword = await bcrypt.hash(parsed.data.newPassword, 12);
+  await db.user.update({
+    where: { id: session.user.id },
+    data: { hashedPassword },
+  });
 
   return { ok: true };
 }
