@@ -100,7 +100,7 @@ export default async function HomePage() {
 
       {/* Marquee-Band */}
       <div className="border-b-2 border-foreground bg-accent overflow-hidden" aria-hidden>
-        <div className="flex w-max animate-marquee motion-reduce:animate-none gap-0 py-2.5">
+        <div className="flex w-max animate-marquee gap-0 py-2.5">
           {[0, 1].map((copy) => (
             <div key={copy} className="flex shrink-0 items-center">
               {[

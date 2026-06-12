@@ -75,7 +75,7 @@ export function Header({ user, shopName }: HeaderProps) {
             <Button variant="ghost" size="icon" aria-label="Warenkorb">
               <ShoppingCart className="h-5 w-5" />
               {mounted && totalQty > 0 && (
-                <span className="absolute -top-1 -right-1 h-5 min-w-5 px-1 rounded-full bg-accent text-accent-foreground border-2 border-foreground text-[10px] font-black grid place-items-center">
+                <span className="absolute -top-1.5 -right-1.5 h-5 min-w-5 px-1 rounded-full bg-accent text-accent-foreground border-2 border-foreground text-[10px] font-black leading-none tabular-nums inline-flex items-center justify-center">
                   {totalQty}
                 </span>
               )}
