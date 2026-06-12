@@ -30,9 +30,10 @@ interface Props {
   defaultName: string;
   stripeAvailable: boolean;
   paypalAvailable: boolean;
+  twintEnabled?: boolean;
 }
 
-export function CheckoutFlow({ defaultEmail, defaultName, stripeAvailable, paypalAvailable }: Props) {
+export function CheckoutFlow({ defaultEmail, defaultName, stripeAvailable, paypalAvailable, twintEnabled = false }: Props) {
   const router = useRouter();
   const items = useCart((s) => s.items);
   const subtotal = useCart((s) => s.subtotal());
@@ -239,8 +240,12 @@ export function CheckoutFlow({ defaultEmail, defaultName, stripeAvailable, paypa
                 <input type="radio" checked={paymentProvider === "STRIPE"} onChange={() => setPaymentProvider("STRIPE")} className="h-4 w-4" />
                 <CreditCard className="h-5 w-5" />
                 <div className="flex-1">
-                  <div className="font-medium text-sm">Kreditkarte / Debitkarte</div>
-                  <div className="text-xs text-muted-foreground">Sicher via Stripe</div>
+                  <div className="font-medium text-sm">
+                    {twintEnabled ? "Karte / TWINT" : "Kreditkarte / Debitkarte"}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {twintEnabled ? "Kredit-/Debitkarte oder TWINT — sicher via Stripe" : "Sicher via Stripe"}
+                  </div>
                 </div>
               </label>
             )}

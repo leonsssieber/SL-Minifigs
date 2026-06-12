@@ -12,6 +12,7 @@ export default async function CheckoutPage({
   const sp = await searchParams;
   const stripeAvailable = !!process.env.STRIPE_SECRET_KEY;
   const paypalAvailable = !!process.env.PAYPAL_CLIENT_ID;
+  const twintEnabled = process.env.STRIPE_ENABLE_TWINT === "true";
 
   return (
     <div className="container py-10">
@@ -31,6 +32,7 @@ export default async function CheckoutPage({
         defaultName={session?.user?.name ?? ""}
         stripeAvailable={stripeAvailable}
         paypalAvailable={paypalAvailable}
+        twintEnabled={twintEnabled}
       />
     </div>
   );

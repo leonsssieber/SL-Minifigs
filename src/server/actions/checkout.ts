@@ -244,9 +244,15 @@ export async function placeOrderAction(
   try {
     // Stripe
     if (data.paymentProvider === "STRIPE") {
+      // TWINT erst NACH der Aktivierung im Stripe-Dashboard einschalten
+      // (STRIPE_ENABLE_TWINT=true) — sonst lehnt Stripe die Session ab und
+      // auch Kartenzahlung wäre blockiert. TWINT zahlt wie Karten synchron:
+      // checkout.session.completed kommt mit payment_status "paid".
+      const stripePaymentMethods: ("card" | "twint")[] =
+        process.env.STRIPE_ENABLE_TWINT === "true" ? ["card", "twint"] : ["card"];
       const stripeSession = await stripe!.checkout.sessions.create({
         mode: "payment",
-        payment_method_types: ["card"],
+        payment_method_types: stripePaymentMethods,
         customer_email: data.email,
         // Session läuft nach 1h ab → Stripe feuert checkout.session.expired
         // → Webhook gibt den reservierten Bestand wieder frei.
