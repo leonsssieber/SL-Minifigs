@@ -35,8 +35,10 @@ function parseProductForm(formData: FormData) {
     sku: formData.get("sku")?.toString() || null,
     legoSetNumber: formData.get("legoSetNumber")?.toString() || null,
     weightGrams: formData.get("weightGrams")?.toString() || null,
-    shippingCategory: formData.get("shippingCategory")?.toString() || null,
-    customShippingMethodId: formData.get("customShippingMethodId")?.toString() || null,
+    // "none" ist der Sentinel-Wert des Dropdowns für „keine Auswahl" (Radix
+    // Select erlaubt keinen leeren Wert) → als null speichern.
+    shippingCategory: ((v) => (v && v !== "none" ? v : null))(formData.get("shippingCategory")?.toString()),
+    customShippingMethodId: ((v) => (v && v !== "none" ? v : null))(formData.get("customShippingMethodId")?.toString()),
     shippingOptions: parseJsonArray(formData.get("shippingOptions")),
     active: formData.get("active") === "true" || formData.get("active") === "on",
     featured: formData.get("featured") === "true" || formData.get("featured") === "on",

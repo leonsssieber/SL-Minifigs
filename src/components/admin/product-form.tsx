@@ -401,9 +401,10 @@ export function ProductForm({ product, categories, shippingMethods, conditions }
               </div>
               <div className="space-y-2">
                 <Label htmlFor="shippingCategory">Versand-Kategorie</Label>
-                <Select name="shippingCategory" defaultValue={product?.shippingCategory ?? ""}>
-                  <SelectTrigger><SelectValue placeholder="Keine" /></SelectTrigger>
+                <Select name="shippingCategory" defaultValue={product?.shippingCategory || "none"}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="none">Keine</SelectItem>
                     <SelectItem value="minifigure">Minifigur</SelectItem>
                     <SelectItem value="small_set">Kleines Set</SelectItem>
                     <SelectItem value="large_set">Grosses Set</SelectItem>
@@ -453,9 +454,10 @@ export function ProductForm({ product, categories, shippingMethods, conditions }
               </div>
               <div className="space-y-2">
                 <Label htmlFor="customShippingMethodId">Versandmethode erzwingen (Legacy, optional)</Label>
-                <Select name="customShippingMethodId" defaultValue={product?.customShippingMethodId ?? ""}>
-                  <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                <Select name="customShippingMethodId" defaultValue={product?.customShippingMethodId || "none"}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="none">— Keine (Kunde wählt) —</SelectItem>
                     {shippingMethods.map((m) => (
                       <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
                     ))}
