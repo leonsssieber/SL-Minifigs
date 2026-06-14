@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
-import { conditionLabel, formatCHF, decimalToNumber } from "@/lib/utils";
+import { formatCHF, decimalToNumber } from "@/lib/utils";
+import { getConditionLabel } from "@/lib/conditions";
 
 export interface ProductCardData {
   id: string;
@@ -9,16 +10,18 @@ export interface ProductCardData {
   price: { toString(): string } | number;
   comparePrice?: { toString(): string } | number | null;
   condition: string;
+  incomplete?: boolean;
   images: { url: string; alt?: string | null }[];
   stockType: string;
   stockQuantity: number;
 }
 
-export function ProductCard({ product }: { product: ProductCardData }) {
+export async function ProductCard({ product }: { product: ProductCardData }) {
   const image = product.images[0];
   const price = decimalToNumber(product.price);
   const comparePrice = product.comparePrice != null ? decimalToNumber(product.comparePrice) : null;
   const isSoldOut = product.stockQuantity <= 0;
+  const condLabel = await getConditionLabel(product.condition);
 
   return (
     <Link
@@ -41,8 +44,13 @@ export function ProductCard({ product }: { product: ProductCardData }) {
         )}
         <div className="absolute top-2.5 left-2.5 flex flex-wrap gap-1.5">
           <span className="-rotate-2 rounded-md border-2 border-foreground bg-background px-2 py-0.5 text-[10px] font-black uppercase tracking-wide">
-            {conditionLabel(product.condition)}
+            {condLabel}
           </span>
+          {product.incomplete && (
+            <span className="rotate-1 rounded-md border-2 border-foreground bg-amber-300 text-foreground px-2 py-0.5 text-[10px] font-black uppercase tracking-wide">
+              Unvollständig
+            </span>
+          )}
           {comparePrice && comparePrice > price && (
             <span className="rotate-1 rounded-md border-2 border-foreground bg-accent text-accent-foreground px-2 py-0.5 text-[10px] font-black">
               −{Math.round(((comparePrice - price) / comparePrice) * 100)}%

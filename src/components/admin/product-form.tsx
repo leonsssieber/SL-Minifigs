@@ -38,6 +38,8 @@ interface ProductFormData {
   shortDescription?: string | null;
   categoryId?: string;
   condition?: string;
+  incomplete?: boolean;
+  incompleteNote?: string | null;
   price?: number | string | { toString(): string };
   comparePrice?: number | string | { toString(): string } | null;
   stockType?: string;
@@ -57,9 +59,10 @@ interface Props {
   product?: ProductFormData;
   categories: { id: string; name: string }[];
   shippingMethods: { id: string; name: string }[];
+  conditions: { value: string; label: string }[];
 }
 
-export function ProductForm({ product, categories, shippingMethods }: Props) {
+export function ProductForm({ product, categories, shippingMethods, conditions }: Props) {
   const router = useRouter();
   const isEdit = !!product?.id;
   const [pending, start] = useTransition();
@@ -73,6 +76,7 @@ export function ProductForm({ product, categories, shippingMethods }: Props) {
   );
   const [active, setActive] = useState(product?.active ?? true);
   const [featured, setFeatured] = useState(product?.featured ?? false);
+  const [incomplete, setIncomplete] = useState(product?.incomplete ?? false);
   const [stockType, setStockType] = useState(product?.stockType ?? "UNIQUE");
   const [shippingOpts, setShippingOpts] = useState<ShippingOptionState[]>(
     product?.shippingOptions ?? []
@@ -86,6 +90,7 @@ export function ProductForm({ product, categories, shippingMethods }: Props) {
     const fd = new FormData(e.currentTarget);
     fd.set("active", active ? "true" : "false");
     fd.set("featured", featured ? "true" : "false");
+    fd.set("incomplete", incomplete ? "true" : "false");
     fd.set("images", JSON.stringify(images));
     fd.set("stockType", stockType);
     fd.set("shippingOptions", JSON.stringify(shippingOpts));
@@ -299,15 +304,34 @@ export function ProductForm({ product, categories, shippingMethods }: Props) {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="condition">Zustand *</Label>
-                <Select name="condition" defaultValue={product?.condition ?? "NEU"} required>
+                <Select name="condition" defaultValue={product?.condition ?? conditions[0]?.value} required>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="NEU">Neu (OVP)</SelectItem>
-                    <SelectItem value="WIE_NEU">Wie Neu</SelectItem>
-                    <SelectItem value="GEBRAUCHT_GUT">Gebraucht – Gut</SelectItem>
-                    <SelectItem value="GEBRAUCHT_FAIR">Gebraucht – Fair</SelectItem>
+                    {conditions.map((c) => (
+                      <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
+                <Link href="/admin/zustaende" className="text-xs text-muted-foreground hover:text-foreground underline">
+                  Zustände verwalten
+                </Link>
+              </div>
+              <div className="space-y-2 rounded-md border p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <Label>Unvollständig</Label>
+                    <p className="text-xs text-muted-foreground">Zusätzlicher Hinweis, falls etwas fehlt.</p>
+                  </div>
+                  <Switch checked={incomplete} onCheckedChange={setIncomplete} />
+                </div>
+                {incomplete && (
+                  <Input
+                    name="incompleteNote"
+                    defaultValue={product?.incompleteNote ?? ""}
+                    placeholder="Was fehlt? z.B. Helm fehlt (optional)"
+                    maxLength={200}
+                  />
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="legoSetNumber">LEGO Teilenummer</Label>

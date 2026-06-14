@@ -4,23 +4,28 @@ import { Plus } from "lucide-react";
 import { db } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { formatCHF, conditionLabel, decimalToNumber } from "@/lib/utils";
+import { formatCHF, decimalToNumber } from "@/lib/utils";
+import { getProductConditions } from "@/lib/conditions";
 import { DeleteProductButton } from "./delete-button";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminProductsPage() {
-  const products = await db.product.findMany({
-    orderBy: { createdAt: "desc" },
-    include: {
-      category: { select: { name: true } },
-      images: { orderBy: { sortOrder: "asc" }, take: 1 },
-    },
-  });
+  const [products, conditions] = await Promise.all([
+    db.product.findMany({
+      orderBy: { createdAt: "desc" },
+      include: {
+        category: { select: { name: true } },
+        images: { orderBy: { sortOrder: "asc" }, take: 1 },
+      },
+    }),
+    getProductConditions(),
+  ]);
+  const conditionLabels = new Map(conditions.map((c) => [c.value, c.label]));
 
   return (
-    <div className="p-8 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="p-4 sm:p-8 space-y-6">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-3xl font-bold">Produkte</h1>
           <p className="text-muted-foreground">{products.length} Produkte insgesamt</p>
@@ -71,7 +76,10 @@ export default async function AdminProductsPage() {
                       <div className="text-xs text-muted-foreground font-mono">{p.slug}</div>
                     </td>
                     <td className="py-2 px-4 text-muted-foreground">{p.category.name}</td>
-                    <td className="py-2 px-4 text-muted-foreground">{conditionLabel(p.condition)}</td>
+                    <td className="py-2 px-4 text-muted-foreground">
+                      {conditionLabels.get(p.condition) ?? p.condition}
+                      {p.incomplete && <span className="ml-1 text-amber-600">· Unvollständig</span>}
+                    </td>
                     <td className="py-2 px-4 text-right font-medium">{formatCHF(decimalToNumber(p.price))}</td>
                     <td className="py-2 px-4 text-right">{p.stockQuantity}</td>
                     <td className="py-2 px-4">

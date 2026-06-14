@@ -3,11 +3,13 @@ export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { ProductForm } from "@/components/admin/product-form";
+import { getProductConditions } from "@/lib/conditions";
 
 export default async function NewProductPage() {
-  const [categories, methods] = await Promise.all([
+  const [categories, methods, conditions] = await Promise.all([
     db.productCategory.findMany({ where: { active: true }, orderBy: { sortOrder: "asc" }, select: { id: true, name: true } }),
     db.shippingMethod.findMany({ where: { active: true }, orderBy: { sortOrder: "asc" }, select: { id: true, name: true } }),
+    getProductConditions(),
   ]);
 
   if (categories.length === 0) {
@@ -20,5 +22,5 @@ export default async function NewProductPage() {
     );
   }
 
-  return <ProductForm categories={categories} shippingMethods={methods} />;
+  return <ProductForm categories={categories} shippingMethods={methods} conditions={conditions} />;
 }

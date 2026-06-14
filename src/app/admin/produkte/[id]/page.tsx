@@ -3,10 +3,11 @@ export const dynamic = "force-dynamic";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { ProductForm } from "@/components/admin/product-form";
+import { getProductConditions } from "@/lib/conditions";
 
 export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [product, categories, methods] = await Promise.all([
+  const [product, categories, methods, conditions] = await Promise.all([
     db.product.findUnique({
       where: { id },
       include: {
@@ -16,6 +17,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
     }),
     db.productCategory.findMany({ where: { active: true }, orderBy: { sortOrder: "asc" }, select: { id: true, name: true } }),
     db.shippingMethod.findMany({ where: { active: true }, orderBy: { sortOrder: "asc" }, select: { id: true, name: true } }),
+    getProductConditions(),
   ]);
   if (!product) notFound();
 
@@ -29,6 +31,8 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
         shortDescription: product.shortDescription,
         categoryId: product.categoryId,
         condition: product.condition,
+        incomplete: product.incomplete,
+        incompleteNote: product.incompleteNote,
         price: product.price,
         comparePrice: product.comparePrice,
         stockType: product.stockType,
@@ -48,6 +52,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
       }}
       categories={categories}
       shippingMethods={methods}
+      conditions={conditions}
     />
   );
 }

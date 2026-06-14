@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { ProductCard } from "@/components/shop/product-card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { conditionLabel } from "@/lib/utils";
+import { getProductConditions } from "@/lib/conditions";
 
 export const metadata = { title: "Alle Produkte" };
 
@@ -67,6 +67,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
     db.product.count({ where }),
     db.productCategory.findMany({ where: { active: true }, orderBy: { sortOrder: "asc" } }),
   ]);
+  const conditions = await getProductConditions();
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
   const selectClass =
@@ -91,8 +92,8 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
         </select>
         <select name="cond" defaultValue={condition ?? ""} className={selectClass}>
           <option value="">Alle Zustände</option>
-          {["NEU", "WIE_NEU", "GEBRAUCHT_GUT", "GEBRAUCHT_FAIR"].map((c) => (
-            <option key={c} value={c}>{conditionLabel(c)}</option>
+          {conditions.map((c) => (
+            <option key={c.value} value={c.value}>{c.label}</option>
           ))}
         </select>
         <select name="sort" defaultValue={sort} className={selectClass}>

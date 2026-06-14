@@ -3,6 +3,7 @@ import { isFullyAuthedAdmin } from "@/lib/admin";
 import { db } from "@/lib/db";
 import { toCsv } from "@/lib/csv";
 import { decimalToNumber } from "@/lib/utils";
+import { getProductConditions } from "@/lib/conditions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,10 +11,14 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   if (!(await isFullyAuthedAdmin())) return new NextResponse("Forbidden", { status: 403 });
 
-  const products = await db.product.findMany({
-    orderBy: { createdAt: "desc" },
-    include: { category: { select: { name: true } } },
-  });
+  const [products, conditions] = await Promise.all([
+    db.product.findMany({
+      orderBy: { createdAt: "desc" },
+      include: { category: { select: { name: true } } },
+    }),
+    getProductConditions(),
+  ]);
+  const conditionLabels = new Map(conditions.map((c) => [c.value, c.label]));
 
   const rows = products.map((p) => ({
     "ID": p.id,
@@ -22,7 +27,8 @@ export async function GET() {
     "Kategorie": p.category.name,
     "SKU": p.sku ?? "",
     "LEGO Teilenummer": p.legoSetNumber ?? "",
-    "Zustand": p.condition,
+    "Zustand": conditionLabels.get(p.condition) ?? p.condition,
+    "Unvollständig": p.incomplete ? "Ja" : "Nein",
     "Preis (CHF)": decimalToNumber(p.price),
     "Vergleichspreis (CHF)": p.comparePrice != null ? decimalToNumber(p.comparePrice) : "",
     "Bestandstyp": p.stockType,

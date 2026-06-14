@@ -55,8 +55,16 @@ export const changePasswordSchema = z.object({
 // PRODUCTS
 // ============================================================
 
-export const productConditionEnum = z.enum(["NEU", "WIE_NEU", "GEBRAUCHT_GUT", "GEBRAUCHT_FAIR"]);
+// Zustände sind admin-verwaltbar (DB-Tabelle ProductCondition). Daher hier nur
+// eine generische String-Prüfung; die Gültigkeit gegen die Liste wird in der
+// Produkt-Action geprüft.
 export const stockTypeEnum = z.enum(["UNIQUE", "MULTIPLE"]);
+
+export const productConditionSchema = z.object({
+  label: z.string().min(2, "Mindestens 2 Zeichen").max(60),
+  sortOrder: z.coerce.number().int().min(0).max(9999).default(0),
+  active: z.boolean().default(true),
+});
 
 export const productSchema = z.object({
   name: z.string().min(2, "Mindestens 2 Zeichen").max(200),
@@ -64,7 +72,9 @@ export const productSchema = z.object({
   description: z.string().min(10, "Mindestens 10 Zeichen").max(10000),
   shortDescription: z.string().max(500).optional().nullable(),
   categoryId: z.string().min(1, "Kategorie erforderlich"),
-  condition: productConditionEnum,
+  condition: z.string().min(1, "Zustand erforderlich").max(50),
+  incomplete: z.boolean().default(false),
+  incompleteNote: z.string().max(200).optional().nullable(),
   price: z.coerce.number().min(0).max(1000000),
   comparePrice: z.coerce.number().min(0).max(1000000).optional().nullable(),
   stockType: stockTypeEnum.default("UNIQUE"),

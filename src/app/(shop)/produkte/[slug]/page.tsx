@@ -7,7 +7,8 @@ import type { Metadata } from "next";
 import { db } from "@/lib/db";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { formatCHF, conditionLabel, decimalToNumber, bricklinkUrl } from "@/lib/utils";
+import { formatCHF, decimalToNumber, bricklinkUrl } from "@/lib/utils";
+import { getConditionLabel } from "@/lib/conditions";
 import { ExternalLink } from "lucide-react";
 import { ProductCard } from "@/components/shop/product-card";
 import { SectionHeader } from "@/components/shop/section-header";
@@ -60,6 +61,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   const price = decimalToNumber(product.price);
   const comparePrice = product.comparePrice != null ? decimalToNumber(product.comparePrice) : null;
   const isSoldOut = product.stockQuantity <= 0;
+  const condLabel = await getConditionLabel(product.condition);
 
   return (
     <div className="container py-6 sm:py-8">
@@ -76,7 +78,10 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         <div className="space-y-5">
           <div className="space-y-2">
             <div className="flex flex-wrap gap-2">
-              <Badge variant="secondary">{conditionLabel(product.condition)}</Badge>
+              <Badge variant="secondary">{condLabel}</Badge>
+              {product.incomplete && (
+                <Badge variant="warning">Unvollständig</Badge>
+              )}
               {product.legoSetNumber && (
                 <a
                   href={bricklinkUrl(product.legoSetNumber)}
@@ -95,6 +100,14 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
             <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight leading-tight break-words">{product.name}</h1>
             {product.shortDescription && (
               <p className="text-muted-foreground">{product.shortDescription}</p>
+            )}
+            {product.incomplete && (
+              <div className="rounded-lg border-2 border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                <strong>Unvollständig:</strong>{" "}
+                {product.incompleteNote?.trim()
+                  ? product.incompleteNote
+                  : "Bei diesem Artikel fehlt etwas — bitte Bilder und Beschreibung beachten."}
+              </div>
             )}
           </div>
 
@@ -159,7 +172,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
             <dt className="text-muted-foreground">Kategorie</dt>
             <dd>{product.category.name}</dd>
             <dt className="text-muted-foreground">Zustand</dt>
-            <dd>{conditionLabel(product.condition)}</dd>
+            <dd>{condLabel}{product.incomplete ? " · Unvollständig" : ""}</dd>
             {product.legoSetNumber && (
               <>
                 <dt className="text-muted-foreground">LEGO Teilenummer</dt>

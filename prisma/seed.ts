@@ -67,6 +67,20 @@ async function main() {
   }
   console.log(`  ✓ Default settings (only created if missing)`);
 
+  // Produkt-Zustände (nur anlegen, wenn noch keine existieren — Admin-Edits bleiben erhalten)
+  const conditionCount = await db.productCondition.count();
+  if (conditionCount === 0) {
+    await db.productCondition.createMany({
+      data: [
+        { value: "NEU", label: "Neu (OVP)", sortOrder: 0 },
+        { value: "WIE_NEU", label: "Wie Neu", sortOrder: 1 },
+        { value: "GEBRAUCHT_GUT", label: "Gebraucht – Gut", sortOrder: 2 },
+        { value: "GEBRAUCHT_FAIR", label: "Gebraucht – Fair", sortOrder: 3 },
+      ],
+    });
+    console.log("  ✓ 4 Produkt-Zustände");
+  }
+
   // Beispiel-Kategorien
   const categories = [
     { slug: "lego-sets", name: "Lego Sets", description: "Komplette Lego-Sets aller Themen.", sortOrder: 1 },

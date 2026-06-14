@@ -135,6 +135,19 @@ model ProductCategory {
   @@index([slug])
 }
 
+// Vom Admin verwaltbare Liste der Produkt-Zustände. Product.condition
+// speichert den `value` (z.B. "NEU"). Ist die Tabelle leer, fällt der Shop
+// auf die eingebauten Standard-Zustände zurück (siehe lib/conditions.ts).
+model ProductCondition {
+  id        String   @id @default(cuid())
+  value     String   @unique // wird in Product.condition gespeichert
+  label     String           // Anzeigename, z.B. "Gebraucht – Fair"
+  sortOrder Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model Product {
   id               String           @id @default(cuid())
   slug             String           @unique
@@ -143,6 +156,9 @@ model Product {
   shortDescription String?
   categoryId       String
   condition        String
+  // Zusätzlicher Hinweis, unabhängig vom Zustand: z.B. wenn ein Teil fehlt.
+  incomplete       Boolean          @default(false)
+  incompleteNote   String?          // optional: was fehlt, z.B. "Helm fehlt"
   price            Decimal
   comparePrice     Decimal?
   stockType        String        @default("UNIQUE")

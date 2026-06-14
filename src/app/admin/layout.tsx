@@ -29,9 +29,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const shopName = process.env.NEXT_PUBLIC_SHOP_NAME ?? "SL Minifigs";
 
   return (
-    <div className="min-h-screen flex bg-background">
+    <div className="min-h-screen lg:flex bg-background">
       <AdminSidebar shopName={shopName} />
-      <main className="flex-1 overflow-x-hidden">{children}</main>
+      <main className="flex-1 min-w-0 overflow-x-hidden">{children}</main>
     </div>
   );
 }

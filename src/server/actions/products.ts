@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireAdmin, logAudit } from "@/lib/admin";
 import { productSchema } from "@/lib/validation";
+import { getProductConditions } from "@/lib/conditions";
 import { slugify } from "@/lib/utils";
 import type { ActionResult } from "@/server/actions/auth";
 
@@ -25,6 +26,8 @@ function parseProductForm(formData: FormData) {
     shortDescription: formData.get("shortDescription")?.toString() || null,
     categoryId: formData.get("categoryId")?.toString() ?? "",
     condition: formData.get("condition")?.toString() ?? "NEU",
+    incomplete: formData.get("incomplete") === "true" || formData.get("incomplete") === "on",
+    incompleteNote: formData.get("incompleteNote")?.toString() || null,
     price: formData.get("price")?.toString() ?? "0",
     comparePrice: formData.get("comparePrice")?.toString() || null,
     stockType: formData.get("stockType")?.toString() ?? "UNIQUE",
@@ -55,6 +58,11 @@ export async function createProduct(formData: FormData): Promise<ActionResult<{ 
     }
     const data = parsed.data;
 
+    const allowedConditions = await getProductConditions();
+    if (!allowedConditions.some((c) => c.value === data.condition)) {
+      return { ok: false, error: "Ungültiger Zustand." };
+    }
+
     const slugExists = await db.product.findUnique({ where: { slug: data.slug } });
     if (slugExists) return { ok: false, error: "Slug ist bereits vergeben." };
 
@@ -66,6 +74,8 @@ export async function createProduct(formData: FormData): Promise<ActionResult<{ 
         shortDescription: data.shortDescription,
         categoryId: data.categoryId,
         condition: data.condition,
+        incomplete: data.incomplete,
+        incompleteNote: data.incomplete ? data.incompleteNote : null,
         price: data.price,
         comparePrice: data.comparePrice,
         stockType: data.stockType,
@@ -121,6 +131,11 @@ export async function updateProduct(id: string, formData: FormData): Promise<Act
     }
     const data = parsed.data;
 
+    const allowedConditions = await getProductConditions();
+    if (!allowedConditions.some((c) => c.value === data.condition)) {
+      return { ok: false, error: "Ungültiger Zustand." };
+    }
+
     const slugClash = await db.product.findFirst({
       where: { slug: data.slug, NOT: { id } },
     });
@@ -136,6 +151,8 @@ export async function updateProduct(id: string, formData: FormData): Promise<Act
           shortDescription: data.shortDescription,
           categoryId: data.categoryId,
           condition: data.condition,
+          incomplete: data.incomplete,
+          incompleteNote: data.incomplete ? data.incompleteNote : null,
           price: data.price,
           comparePrice: data.comparePrice,
           stockType: data.stockType,
