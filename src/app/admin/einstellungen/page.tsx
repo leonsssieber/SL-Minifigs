@@ -23,6 +23,7 @@ const KEYS = [
   "shop_legal_entity",
   "shop_legal_owner",
   "shop_legal_register",
+  "shop_twint_enabled",
 ];
 
 export default async function AdminSettingsPage({
@@ -124,6 +125,34 @@ export default async function AdminSettingsPage({
             </div>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Zahlungen</CardTitle>
+            <CardDescription>Welche Bezahlmethoden im Checkout angezeigt werden.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="shop_twint_enabled">TWINT (über Stripe)</Label>
+              <select
+                id="shop_twint_enabled"
+                name="shop_twint_enabled"
+                defaultValue={map.get("shop_twint_enabled") === "true" ? "true" : "false"}
+                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                <option value="false">Deaktiviert</option>
+                <option value="true">Aktiviert</option>
+              </select>
+              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md p-3">
+                <strong>Erst aktivieren, wenn TWINT im Stripe-Dashboard freigeschaltet ist</strong>{" "}
+                (Status „Aktiviert"). Kreditkarte &amp; PayPal funktionieren unabhängig davon immer.
+                Sollte TWINT bei Stripe doch noch nicht bereit sein, fällt der Checkout
+                automatisch auf Kartenzahlung zurück — es geht also nie etwas kaputt.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
         <Button type="submit">Speichern</Button>
       </form>
 

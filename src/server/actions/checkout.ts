@@ -11,6 +11,7 @@ import { createPayPalOrder, isPayPalConfigured } from "@/lib/paypal";
 import { generateOrderNumber, decimalToNumber } from "@/lib/utils";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { cancelPendingOrderAndRestock, releaseExpiredPendingOrders } from "@/lib/order-stock";
+import { getSettings } from "@/server/actions/settings";
 import type { ActionResult } from "@/server/actions/auth";
 
 export interface CartItemForServer {
@@ -244,51 +245,71 @@ export async function placeOrderAction(
   try {
     // Stripe
     if (data.paymentProvider === "STRIPE") {
-      // TWINT erst NACH der Aktivierung im Stripe-Dashboard einschalten
-      // (STRIPE_ENABLE_TWINT=true) — sonst lehnt Stripe die Session ab und
-      // auch Kartenzahlung wäre blockiert. TWINT zahlt wie Karten synchron:
-      // checkout.session.completed kommt mit payment_status "paid".
-      const stripePaymentMethods: ("card" | "twint")[] =
-        process.env.STRIPE_ENABLE_TWINT === "true" ? ["card", "twint"] : ["card"];
-      const stripeSession = await stripe!.checkout.sessions.create({
-        mode: "payment",
-        payment_method_types: stripePaymentMethods,
-        customer_email: data.email,
-        // Session läuft nach 1h ab → Stripe feuert checkout.session.expired
-        // → Webhook gibt den reservierten Bestand wieder frei.
-        expires_at: Math.floor(Date.now() / 1000) + 60 * 60,
-        line_items: [
-          ...cartItems.map((it) => {
-            const p = products.find((x) => x.id === it.productId)!;
-            return {
-              quantity: it.quantity,
+      // TWINT wird im Admin (Einstellungen → Zahlungen) ein-/ausgeschaltet —
+      // kein Redeploy nötig. TWINT zahlt wie Karten synchron: completed kommt
+      // mit payment_status "paid".
+      const settings = await getSettings(["shop_twint_enabled"]);
+      const twintWanted = settings.shop_twint_enabled === "true";
+
+      // Session-Erstellung als Funktion, damit wir bei Bedarf einen zweiten
+      // Versuch (nur Karte) machen können — ohne den langen Parameterblock zu
+      // duplizieren.
+      const createStripeSession = (methodTypes: ("card" | "twint")[]) =>
+        stripe!.checkout.sessions.create({
+          mode: "payment",
+          payment_method_types: methodTypes,
+          customer_email: data.email,
+          // Session läuft nach 1h ab → Stripe feuert checkout.session.expired
+          // → Webhook gibt den reservierten Bestand wieder frei.
+          expires_at: Math.floor(Date.now() / 1000) + 60 * 60,
+          line_items: [
+            ...cartItems.map((it) => {
+              const p = products.find((x) => x.id === it.productId)!;
+              return {
+                quantity: it.quantity,
+                price_data: {
+                  currency: "chf",
+                  unit_amount: Math.round(decimalToNumber(p.price) * 100),
+                  product_data: {
+                    name: p.name,
+                    description: p.shortDescription ?? undefined,
+                    images: p.images[0] ? [p.images[0].url] : undefined,
+                  },
+                },
+              };
+            }),
+            {
+              quantity: 1,
               price_data: {
                 currency: "chf",
-                unit_amount: Math.round(decimalToNumber(p.price) * 100),
-                product_data: {
-                  name: p.name,
-                  description: p.shortDescription ?? undefined,
-                  images: p.images[0] ? [p.images[0].url] : undefined,
-                },
+                unit_amount: Math.round(shippingCost * 100),
+                product_data: { name: `Versand: ${chosenOption.methodName}` },
               },
-            };
-          }),
-          {
-            quantity: 1,
-            price_data: {
-              currency: "chf",
-              unit_amount: Math.round(shippingCost * 100),
-              product_data: { name: `Versand: ${chosenOption.methodName}` },
             },
-          },
-        ],
-        success_url: `${baseUrl}/bestellung/${order.orderNumber}?paid=1`,
-        cancel_url: `${baseUrl}/kasse?cancelled=1`,
-        metadata: { orderId: order.id, orderNumber: order.orderNumber },
-        payment_intent_data: {
+          ],
+          success_url: `${baseUrl}/bestellung/${order.orderNumber}?paid=1`,
+          cancel_url: `${baseUrl}/kasse?cancelled=1`,
           metadata: { orderId: order.id, orderNumber: order.orderNumber },
-        },
-      });
+          payment_intent_data: {
+            metadata: { orderId: order.id, orderNumber: order.orderNumber },
+          },
+        });
+
+      // Sicherheitsnetz: Ist TWINT im Admin aktiviert, aber bei Stripe (noch)
+      // nicht freigeschaltet, lehnt Stripe die Session ab. Dann NICHT den
+      // ganzen Checkout brechen lassen, sondern auf reine Kartenzahlung
+      // zurückfallen — der Kunde kann immer bezahlen.
+      let stripeSession;
+      try {
+        stripeSession = await createStripeSession(twintWanted ? ["card", "twint"] : ["card"]);
+      } catch (err) {
+        if (twintWanted && err instanceof Error && /twint/i.test(err.message)) {
+          console.error("[checkout] TWINT ist im Admin aktiviert, aber bei Stripe nicht freigeschaltet — Fallback auf Kartenzahlung.");
+          stripeSession = await createStripeSession(["card"]);
+        } else {
+          throw err;
+        }
+      }
 
       await db.order.update({
         where: { id: order.id },

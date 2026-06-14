@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { getSettings } from "@/server/actions/settings";
 import { CheckoutFlow } from "./checkout-flow";
 
 export const metadata = { title: "Kasse" };
@@ -12,7 +13,8 @@ export default async function CheckoutPage({
   const sp = await searchParams;
   const stripeAvailable = !!process.env.STRIPE_SECRET_KEY;
   const paypalAvailable = !!process.env.PAYPAL_CLIENT_ID;
-  const twintEnabled = process.env.STRIPE_ENABLE_TWINT === "true";
+  const settings = await getSettings(["shop_twint_enabled"]);
+  const twintEnabled = settings.shop_twint_enabled === "true";
 
   return (
     <div className="container py-10">

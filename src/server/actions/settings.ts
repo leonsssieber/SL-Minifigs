@@ -36,6 +36,7 @@ const PUBLIC_SETTING_KEYS = new Set([
   "shop_legal_entity",
   "shop_legal_owner",
   "shop_legal_register",
+  "shop_twint_enabled",
 ]);
 
 export async function getSettings(keys: string[]): Promise<Record<string, string>> {
