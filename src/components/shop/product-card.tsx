@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { AlertTriangle } from "lucide-react";
 import { formatCHF, decimalToNumber } from "@/lib/utils";
 import { getConditionLabel } from "@/lib/conditions";
 
@@ -47,8 +48,12 @@ export async function ProductCard({ product }: { product: ProductCardData }) {
             {condLabel}
           </span>
           {product.incomplete && (
-            <span className="rotate-1 rounded-md border-2 border-foreground bg-amber-300 text-foreground px-2 py-0.5 text-[10px] font-black uppercase tracking-wide">
-              Unvollständig
+            <span
+              title="Unvollständig — es fehlt etwas"
+              className="rotate-1 grid h-[22px] w-[22px] place-items-center rounded-md border-2 border-foreground bg-amber-300 text-foreground"
+            >
+              <AlertTriangle className="h-3.5 w-3.5" strokeWidth={2.75} aria-hidden />
+              <span className="sr-only">Unvollständig</span>
             </span>
           )}
           {comparePrice && comparePrice > price && (
