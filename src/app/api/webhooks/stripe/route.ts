@@ -4,7 +4,7 @@ import { stripe } from "@/lib/stripe";
 import { db } from "@/lib/db";
 import { sendEmail, orderConfirmationEmail } from "@/lib/email";
 import { formatCHF, decimalToNumber } from "@/lib/utils";
-import { cancelPendingOrderAndRestock } from "@/lib/order-stock";
+import { cancelPendingOrder, commitStockForPaidOrder } from "@/lib/order-stock";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -77,6 +77,23 @@ export async function POST(req: Request) {
           console.warn(`[stripe webhook] Order ${existing.orderNumber} ist nicht mehr PENDING (Status: ${existing.status}) — keine Änderung.`);
           break;
         }
+
+        // Erst jetzt — nach bestätigter Zahlung — den Bestand atomar abbuchen.
+        // Da nur der Gewinner des PENDING→PAID-Wechsels hier ankommt, passiert
+        // das genau einmal pro Bestellung.
+        const stockResult = await commitStockForPaidOrder(orderId);
+        if (!stockResult.ok) {
+          console.error(
+            `[stripe webhook] Bestand bei Zahlungseingang nicht mehr verfügbar für Order ${existing.orderNumber}: ${stockResult.insufficient.join(", ")} — bitte manuell prüfen/erstatten.`
+          );
+          await db.order.update({
+            where: { id: orderId },
+            data: {
+              adminNotes: `⚠ Bezahlt, aber Bestand reichte nicht mehr für: ${stockResult.insufficient.join(", ")}. Bitte Kunde kontaktieren / erstatten.`,
+            },
+          });
+        }
+
         const order = await db.order.findUniqueOrThrow({
           where: { id: orderId },
           include: { items: true },
@@ -119,14 +136,15 @@ export async function POST(req: Request) {
         break;
       }
       case "checkout.session.expired": {
-        // WICHTIG: Nur bei abgelaufener Session stornieren. Ein einzelner
+        // Abgelaufene Session → PENDING-Bestellung aufräumen. Bestand ist nicht
+        // betroffen, da er erst bei Zahlung abgebucht wird. Ein einzelner
         // fehlgeschlagener Zahlungsversuch (payment_intent.payment_failed)
-        // darf NICHT stornieren — der Kunde kann es in derselben Session
-        // mit einer anderen Karte erneut versuchen.
+        // wird bewusst NICHT behandelt — der Kunde kann es in derselben Session
+        // erneut versuchen.
         const data = event.data.object;
         const orderId = data.metadata?.orderId;
         if (!orderId) break;
-        await cancelPendingOrderAndRestock(orderId);
+        await cancelPendingOrder(orderId);
         break;
       }
     }

@@ -45,8 +45,12 @@ export async function updateOrder(id: string, formData: FormData): Promise<Actio
     if (newStatus === "COMPLETED" && !order.completedAt) updates.completedAt = new Date();
     if (newStatus === "CANCELLED" && !order.cancelledAt) updates.cancelledAt = new Date();
 
-    // Bei Cancel: Bestand wieder hochzählen. Statuswechsel atomar mit Guard,
-    // damit ein paralleler Webhook-Cancel nicht doppelt zurückbucht.
+    // Bei Cancel: Bestand nur zurückbuchen, wenn er überhaupt abgebucht war —
+    // also wenn die Bestellung bereits bezahlt (oder weiter) war. Bei einer
+    // noch unbezahlten PENDING-Bestellung wurde nie Bestand abgezogen, sonst
+    // entstünde Phantom-Bestand. Statuswechsel atomar mit Guard, damit ein
+    // paralleler Cancel nicht doppelt zurückbucht.
+    const stockWasCommitted = ["PAID", "PROCESSING", "SHIPPED", "COMPLETED"].includes(order.status);
     if (newStatus === "CANCELLED" && order.status !== "CANCELLED") {
       await db.$transaction(async (tx) => {
         const res = await tx.order.updateMany({
@@ -54,12 +58,14 @@ export async function updateOrder(id: string, formData: FormData): Promise<Actio
           data: updates as never,
         });
         if (res.count === 0) return; // jemand anderes hat bereits storniert
-        for (const item of order.items) {
-          if (item.productId) {
-            await tx.product.update({
-              where: { id: item.productId },
-              data: { stockQuantity: { increment: item.quantity } },
-            });
+        if (stockWasCommitted) {
+          for (const item of order.items) {
+            if (item.productId) {
+              await tx.product.update({
+                where: { id: item.productId },
+                data: { stockQuantity: { increment: item.quantity } },
+              });
+            }
           }
         }
       });

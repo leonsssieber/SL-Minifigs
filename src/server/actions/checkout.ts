@@ -10,7 +10,7 @@ import { stripe, isStripeConfigured } from "@/lib/stripe";
 import { createPayPalOrder, isPayPalConfigured } from "@/lib/paypal";
 import { generateOrderNumber, decimalToNumber } from "@/lib/utils";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
-import { cancelPendingOrderAndRestock, releaseExpiredPendingOrders } from "@/lib/order-stock";
+import { cancelPendingOrder, releaseExpiredPendingOrders } from "@/lib/order-stock";
 import { getSettings } from "@/server/actions/settings";
 import type { ActionResult } from "@/server/actions/auth";
 
@@ -173,22 +173,13 @@ export async function placeOrderAction(
   const orderNumber = generateOrderNumber();
   let order;
   try {
-    order = await db.$transaction(async (tx) => {
-      // Bestand atomar reservieren: Das Decrement passiert nur, wenn noch
-      // genug Bestand da ist (Guard in der WHERE-Klausel). Damit können
-      // zwei gleichzeitige Checkouts dasselbe Unikat nicht doppelt kaufen.
-      for (const it of cartItems) {
-        const res = await tx.product.updateMany({
-          where: { id: it.productId, active: true, stockQuantity: { gte: it.quantity } },
-          data: { stockQuantity: { decrement: it.quantity } },
-        });
-        if (res.count === 0) {
-          const p = products.find((x) => x.id === it.productId);
-          throw new Error(`OUT_OF_STOCK:${p?.name ?? "Produkt"}`);
-        }
-      }
-      return tx.order.create({
-        data: {
+    // Bestand wird hier NICHT abgezogen, sondern erst bei bestätigter Zahlung
+    // (Stripe-Webhook / PayPal-Capture). Abgebrochene oder nicht bezahlte
+    // Checkouts beeinflussen den Bestand dadurch nie. Die Verfügbarkeitsprüfung
+    // oben ist nur eine freundliche Vorab-Anzeige — verbindlich & atomar
+    // gebucht wird der Bestand beim Zahlungseingang.
+    order = await db.order.create({
+      data: {
         orderNumber,
         userId: session?.user?.id ?? null,
         guestEmail: session?.user ? null : data.email.toLowerCase(),
@@ -227,21 +218,17 @@ export async function placeOrderAction(
           }),
         },
       },
-      });
     });
   } catch (err) {
-    if (err instanceof Error && err.message.startsWith("OUT_OF_STOCK:")) {
-      const name = err.message.slice("OUT_OF_STOCK:".length);
-      return { ok: false, error: `„${name}" ist nicht mehr in dieser Menge verfügbar.` };
-    }
     console.error("[checkout] Bestellung anlegen fehlgeschlagen:", err);
     return { ok: false, error: "Bestellung konnte nicht angelegt werden. Bitte erneut versuchen." };
   }
 
   const baseUrl = process.env.NEXT_PUBLIC_SHOP_URL ?? "http://localhost:3000";
 
-  // Ab hier ist Bestand reserviert. Schlägt die Zahlungs-API fehl, wird die
-  // Bestellung sofort storniert und der Bestand zurückgegeben.
+  // Schlägt die Zahlungs-API fehl, wird die PENDING-Bestellung sofort
+  // storniert (Bestand ist hier noch unberührt — er wird erst bei Zahlung
+  // gebucht).
   try {
     // Stripe
     if (data.paymentProvider === "STRIPE") {
@@ -343,7 +330,7 @@ export async function placeOrderAction(
     return { ok: true, data: { orderId: order.id, redirectUrl: ppOrder.approveUrl, paypalOrderId: ppOrder.id } };
   } catch (err) {
     console.error("[checkout] Zahlungs-Session fehlgeschlagen, storniere Bestellung:", err);
-    await cancelPendingOrderAndRestock(order.id).catch((e) =>
+    await cancelPendingOrder(order.id).catch((e) =>
       console.error("[checkout] Rollback fehlgeschlagen:", e)
     );
     return { ok: false, error: "Zahlung konnte nicht gestartet werden. Bitte erneut versuchen." };

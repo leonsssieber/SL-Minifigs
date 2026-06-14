@@ -3,6 +3,7 @@ import { capturePayPalOrder } from "@/lib/paypal";
 import { db } from "@/lib/db";
 import { sendEmail, orderConfirmationEmail } from "@/lib/email";
 import { formatCHF, decimalToNumber } from "@/lib/utils";
+import { commitStockForPaidOrder } from "@/lib/order-stock";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -62,6 +63,20 @@ export async function GET(req: Request) {
       });
       if (updated.count === 0) {
         return NextResponse.redirect(new URL(`/bestellung/${order.orderNumber}?paid=1`, req.url));
+      }
+
+      // Erst jetzt — nach bestätigtem Zahlungseingang — Bestand atomar abbuchen.
+      const stockResult = await commitStockForPaidOrder(orderId);
+      if (!stockResult.ok) {
+        console.error(
+          `[paypal capture] Bestand bei Zahlungseingang nicht mehr verfügbar für Order ${order.orderNumber}: ${stockResult.insufficient.join(", ")} — bitte manuell prüfen/erstatten.`
+        );
+        await db.order.update({
+          where: { id: orderId },
+          data: {
+            adminNotes: `⚠ Bezahlt, aber Bestand reichte nicht mehr für: ${stockResult.insufficient.join(", ")}. Bitte Kunde kontaktieren / erstatten.`,
+          },
+        });
       }
 
       const recipientEmail = order.guestEmail ??
