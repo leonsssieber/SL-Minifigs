@@ -12,13 +12,33 @@ import type { ActionResult } from "./auth";
 
 // Sendet einen 2FA-Code an die Admin-E-Mail-Adresse.
 // Verwendet requireAdminSession (kein 2FA-Cookie nötig), weil DIESE Action ja den Cookie erst setzt.
-export async function sendAdmin2faCode(): Promise<ActionResult<{ sent: true; ttlMinutes: number }>> {
+// `force`: true beim manuellen „Neuen Code senden"-Klick — dann wird die
+// Entdoppelung übersprungen und immer ein frischer Code gesendet.
+export async function sendAdmin2faCode(force = false): Promise<ActionResult<{ sent: true; ttlMinutes: number }>> {
   const user = await requireAdminSession();
 
   const ip = getClientIp(await headers());
   const rl = await rateLimit(`2fa-send:${user.id}:${ip}`, 5, 60);
   if (!rl.success) {
     return { ok: false, error: `Bitte ${rl.resetIn}s warten, bevor du einen neuen Code anforderst.` };
+  }
+
+  // Entdoppelung: Wird die Seite zweimal kurz hintereinander gerendert
+  // (Next.js-Prefetch / Doppel-Render), darf NICHT ein zweiter Code per
+  // E-Mail rausgehen. Existiert bereits ein frischer, ungenutzter Code
+  // (< 60 s), gilt der weiterhin — wir senden keinen neuen.
+  if (!force) {
+    const recent = await db.emailTwoFactorCode.findFirst({
+      where: {
+        userId: user.id,
+        usedAt: null,
+        expiresAt: { gt: new Date() },
+        createdAt: { gt: new Date(Date.now() - 60 * 1000) },
+      },
+    });
+    if (recent) {
+      return { ok: true, data: { sent: true, ttlMinutes: EMAIL_2FA_CODE_TTL_MINUTES } };
+    }
   }
 
   const dbUser = await db.user.findUnique({

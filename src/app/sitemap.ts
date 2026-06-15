@@ -20,6 +20,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticPages = [
     { url: `${base}`, priority: 1.0 },
     { url: `${base}/produkte`, priority: 0.9 },
+    { url: `${base}/ankauf`, priority: 0.7 },
     { url: `${base}/kontakt`, priority: 0.5 },
     { url: `${base}/agb`, priority: 0.3 },
     { url: `${base}/datenschutz`, priority: 0.3 },

@@ -7,7 +7,15 @@ import { ProductCard } from "@/components/shop/product-card";
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const cat = await db.productCategory.findUnique({ where: { slug } });
-  return { title: cat?.name ?? "Kategorie" };
+  if (!cat) return { title: "Kategorie" };
+  const description =
+    cat.description ?? `${cat.name} — gebrauchte LEGO® Artikel, geprüft und fair bepreist. Versand aus der Schweiz.`;
+  return {
+    title: cat.name,
+    description,
+    alternates: { canonical: `/kategorie/${slug}` },
+    openGraph: { type: "website", title: cat.name, description, url: `/kategorie/${slug}` },
+  };
 }
 
 export default async function CategoryPage({ params }: { params: Promise<{ slug: string }> }) {

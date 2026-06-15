@@ -15,15 +15,40 @@ import { SectionHeader } from "@/components/shop/section-header";
 import { AddToCartButton } from "./add-to-cart-button";
 import { WishlistButton } from "@/components/shop/wishlist-button";
 import { auth } from "@/lib/auth";
+import { JsonLd } from "@/components/seo/json-ld";
 import { ProductGallery } from "./product-gallery";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  const product = await db.product.findUnique({ where: { slug }, select: { name: true, shortDescription: true, description: true } });
+  const product = await db.product.findUnique({
+    where: { slug },
+    select: {
+      name: true,
+      shortDescription: true,
+      description: true,
+      images: { orderBy: { sortOrder: "asc" }, take: 1, select: { url: true } },
+    },
+  });
   if (!product) return { title: "Produkt nicht gefunden" };
+  const description = product.shortDescription ?? product.description.slice(0, 160);
+  const image = product.images[0]?.url;
   return {
     title: product.name,
-    description: product.shortDescription ?? product.description.slice(0, 160),
+    description,
+    alternates: { canonical: `/produkte/${slug}` },
+    openGraph: {
+      type: "website",
+      title: product.name,
+      description,
+      url: `/produkte/${slug}`,
+      images: image ? [{ url: image, alt: product.name }] : undefined,
+    },
+    twitter: {
+      card: image ? "summary_large_image" : "summary",
+      title: product.name,
+      description,
+      images: image ? [image] : undefined,
+    },
   };
 }
 
@@ -63,8 +88,47 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   const isSoldOut = product.stockQuantity <= 0;
   const condLabel = await getConditionLabel(product.condition);
 
+  const baseUrl = process.env.NEXT_PUBLIC_SHOP_URL ?? "http://localhost:3000";
+  const productUrl = `${baseUrl}/produkte/${product.slug}`;
+  const productLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.name,
+    description: product.shortDescription ?? product.description.slice(0, 300),
+    image: product.images.map((i) => i.url),
+    sku: product.sku ?? undefined,
+    mpn: product.legoSetNumber ?? undefined,
+    brand: { "@type": "Brand", name: "LEGO" },
+    category: product.category.name,
+    offers: {
+      "@type": "Offer",
+      url: productUrl,
+      priceCurrency: "CHF",
+      price: price.toFixed(2),
+      itemCondition:
+        product.condition === "NEU"
+          ? "https://schema.org/NewCondition"
+          : "https://schema.org/UsedCondition",
+      availability: isSoldOut
+        ? "https://schema.org/OutOfStock"
+        : "https://schema.org/InStock",
+      seller: { "@type": "Organization", name: process.env.NEXT_PUBLIC_SHOP_NAME ?? "SL Minifigs" },
+    },
+  };
+  const breadcrumbLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: baseUrl },
+      { "@type": "ListItem", position: 2, name: "Produkte", item: `${baseUrl}/produkte` },
+      { "@type": "ListItem", position: 3, name: product.category.name, item: `${baseUrl}/kategorie/${product.category.slug}` },
+      { "@type": "ListItem", position: 4, name: product.name, item: productUrl },
+    ],
+  };
+
   return (
     <div className="container py-6 sm:py-8">
+      <JsonLd data={[productLd, breadcrumbLd]} />
       <nav className="text-xs text-muted-foreground mb-4 flex flex-wrap items-center gap-x-1 gap-y-0.5 min-w-0">
         <Link href="/" className="hover:text-foreground">Home</Link> <span>/</span>
         <Link href="/produkte" className="hover:text-foreground">Produkte</Link> <span>/</span>

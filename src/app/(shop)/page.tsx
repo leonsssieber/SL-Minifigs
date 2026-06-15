@@ -4,8 +4,12 @@ import { Button } from "@/components/ui/button";
 import { db } from "@/lib/db";
 import { ProductCard } from "@/components/shop/product-card";
 import { SectionHeader } from "@/components/shop/section-header";
+import { JsonLd } from "@/components/seo/json-ld";
 
 export const dynamic = "force-dynamic";
+
+const shopName = process.env.NEXT_PUBLIC_SHOP_NAME ?? "SL Minifigs";
+const shopUrl = process.env.NEXT_PUBLIC_SHOP_URL ?? "http://localhost:3000";
 
 export const metadata = {
   title: "Handverlesene LEGO® Minifiguren & Sets",
@@ -36,6 +40,36 @@ export default async function HomePage() {
 
   return (
     <>
+      <JsonLd
+        data={[
+          {
+            "@context": "https://schema.org",
+            "@type": "OnlineStore",
+            name: shopName,
+            url: shopUrl,
+            description:
+              "Handverlesene LEGO®-Minifiguren, Sets und Einzelteile aus zweiter Hand. Versand aus der Schweiz.",
+            areaServed: { "@type": "Country", name: "Schweiz" },
+            currenciesAccepted: "CHF",
+            paymentAccepted: "Kreditkarte, PayPal, TWINT",
+          },
+          {
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            name: shopName,
+            url: shopUrl,
+            inLanguage: "de-CH",
+            potentialAction: {
+              "@type": "SearchAction",
+              target: {
+                "@type": "EntryPoint",
+                urlTemplate: `${shopUrl}/produkte?q={search_term_string}`,
+              },
+              "query-input": "required name=search_term_string",
+            },
+          },
+        ]}
+      />
       {/* Hero */}
       <section className="relative overflow-hidden border-b-2 border-foreground">
         <div className="absolute inset-0 studs-pattern-strong [mask-image:linear-gradient(105deg,transparent_45%,black_75%)]" aria-hidden />

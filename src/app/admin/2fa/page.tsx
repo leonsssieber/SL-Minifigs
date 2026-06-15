@@ -54,7 +54,8 @@ export default async function TwoFaVerifyPage({
 
   async function handleSend() {
     "use server";
-    const result = await sendAdmin2faCode();
+    // Manueller Klick auf „Neuen Code senden" → force = true (frischer Code).
+    const result = await sendAdmin2faCode(true);
     if (!result.ok) {
       redirect(`/admin/2fa?sent=1&error=${encodeURIComponent(result.error)}`);
     }
